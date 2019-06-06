@@ -216,6 +216,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
 
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -283,6 +284,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
 
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -305,6 +307,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                           sen1_nesz_par_mli, ml_rg, ml_az)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -317,6 +320,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'float_math {0} {1} {2} {3} 1 - - - - - 1'.format(sen1_img_mli, sen1_nesz_mli, sen1_img_mli_cor, mli_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -328,6 +332,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'replace_values {0} 0.0001 0.0001 {1} {2} 2 2'.format(sen1_img_mli_cor, sen1_img_mli_cor2, mli_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -344,6 +349,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'radcal_MLI {0} {1} - {2} - 0 0 1 0 - {3}'.format(sen1_img_mli, sen1_par_mli, sen1_img_cmli, sen1_img_pix_ell)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -374,6 +380,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
 
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -397,6 +404,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                           sen1_img_pixdem)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -412,6 +420,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'create_diff_par {0} - {1} 1 0'.format(sen1_par_mli, sen1_par_diff)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -425,6 +434,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                                            sen1_img_offsets)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -436,6 +446,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                            sen1_img_coffsets)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -451,6 +462,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'gc_map_fine {0} {1} {2} {3} 0'.format(sen1_img_geo2rdc, dem_width, sen1_par_diff, sen1_img_geo2rdc_fine)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -464,6 +476,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                           sen1_img_pixdem)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -477,6 +490,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'float_math {0} {1} {2} {3} 3 - - 1 1 - '.format(sen1_img_pix_ell, sen1_img_pixdem, sen1_img_pix, mli_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -486,6 +500,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'float_math {0} {1} {2} {3}  2 - - 1 1 - '.format(sen1_img_cmli, sen1_img_pix, sen1_img_s0, mli_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -500,6 +515,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                           dem_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -510,6 +526,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
                                                            dem_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -525,6 +542,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'sigma2gamma {0} {1} {2} {3} '.format(sen1_img_s0geo, sen1_img_inc, sen1_img_g0geo, dem_width)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -544,6 +562,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'data2geotiff {0} {1} 2 {2}'.format(sen1_par_gcdem, sen1_img_g0geo, sen1_img_pwrout)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -552,6 +571,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'data2geotiff {0} {1} 2 {2}'.format(sen1_par_gcdem, sen1_img_inc, sen1_img_incout)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -560,6 +580,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'data2geotiff {0} {1} 2 {2}'.format(sen1_par_gcdem, sen1_img_pix, sen1_img_pixout)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))
@@ -568,6 +589,7 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     cmd = 'data2geotiff {0} {1} 2 {2}'.format(sen1_par_gcdem, sen1_img_lsmap, sen1_img_lsout)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error("Command failed: '{}'".format(cmd))

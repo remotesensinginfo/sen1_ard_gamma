@@ -32,6 +32,7 @@ sen1_ard_gamma - tools for Sentinel-1 GRD processing using Gamma
 # Version 1.0 - Created.
 
 import logging
+import os
 import os.path
 import glob
 import datetime
@@ -42,6 +43,42 @@ import osgeo.ogr as ogr
 
 logger = logging.getLogger(__name__)
 
+
+def preappend_cmd(cmd):
+    """
+    For using docker or singularity the command needs to be pre-appended and potentially the
+    file paths need to be updated to use a local mount within a docker image.
+
+    For the command to be pre-appended the S1ARD_PAP_CMD environmental variable needs defined.
+
+    For the file path to be updated the S1ARD_PAP_PATH environmental variable needs to be defined
+    with local_path:mount_path
+
+    :param cmd: string with command to be run.
+    :return: string with pre-appended command.
+    """
+    pap_cmd = os.getenv('S1ARD_PAP_CMD', None)
+    if pap_cmd is None:
+        logger.debug("S1ARD_PAP_CMD is not defined.")
+        return cmd
+    logger.debug("S1ARD_PAP_CMD is defined: '{}'.".format(pap_cmd))
+
+    out_cmd = "{} {}".format(pap_cmd, cmd)
+    logger.debug("Command appended: '{}'.".format(out_cmd))
+
+    fnl_out_cmd = out_cmd
+    pap_path = os.getenv('S1ARD_PAP_PATH', None)
+    if pap_cmd is not None:
+        logger.debug("S1ARD_PAP_PATH is defined: '{}'.".format(pap_path))
+        pap_paths = pap_path.split(':')
+        lcl_path = pap_paths[0]
+        rmt_path = pap_paths[1]
+        logger.debug("Local Path to be replaced: '{}'.".format(lcl_path))
+        logger.debug("Remote Path to be populated: '{}'.".format(rmt_path))
+        fnl_out_cmd = out_cmd.replace(lcl_path, rmt_path)
+
+    logger.debug("Command outputted: '{}'.".format(fnl_out_cmd))
+    return fnl_out_cmd
 
 def uidGenerator(size=6):
     """

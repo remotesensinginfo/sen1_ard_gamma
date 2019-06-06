@@ -126,6 +126,7 @@ def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, ou
     cmd = 'swap_bytes {0} {1} 2'.format(out_dem_tmp_file, out_dem_file)
     try:
         logger.debug("Running following command using subprocess '{}'".format(cmd))
+        cmd = sen1_ard_gamma.sen1_ard_utils.preappend_cmd(cmd)
         subprocess.call(cmd, shell=True)
     except OSError as e:
         logger.error('Cmd Failed: {}'.format(cmd))

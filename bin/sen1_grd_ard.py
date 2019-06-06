@@ -55,8 +55,8 @@ if __name__ == "__main__":
     parser.add_argument("--pol", type=str, nargs='+', default=None, choices=sen1_ard_gamma.SEN1_POLS,
                         help='''Specify the polarisations to be processed. If None then all processed.
                                 Default is None.''')
-    parser.add_argument("-n", "--ncores", type=int, default=1,
-                        help="Specify the number of processing cores to use. Default 1.")
+    parser.add_argument("-f", "--format", type=str, default="GTIFF", help="Provide GDAL format for final output files.")
+
     args = parser.parse_args()
 
     scn_metadata_info = sen1_ard_gamma.sen1_ard_utils.retrieve_sentinel1_metadata(args.input)
