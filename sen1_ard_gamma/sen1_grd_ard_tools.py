@@ -598,5 +598,105 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     logger.info("Completed processing of {}.".format(sen1img))
 
 
-def create_pol_stacked_products():
-    logger.info("create_pol_stacked_products - needs to be implemented.")
+def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, gdal_format='GTIFF'):
+    """
+    A function to create the final stacked ARD image products.
+
+    :param out_scns_dict: dictionary with polarisation at the first level and second level of (inc, lsmap, pix, pwr)
+    :param out_base_name: output image file base name
+    :param tmp_dir: tmp directory to sort tempory images to
+    :param out_dir: output directory to export final images to
+    :param gdal_format: the output GDAL image format (Default: GTIFF)
+
+    """
+    logger.info("Starting to stack images to create final products")
+    out_img_list = dict()
+    img_ext = sen1_ard_gamma.sen1_ard_utils.get_file_extension(gdal_format)
+    scn_keys = list(out_scns_dict.keys())
+    gdal_opts = ""
+    if gdal_format == 'GTIFF':
+        gdal_opts = "-co TILED=YES -co COMPRESS=LZW -co BIGTIFF=IF_NEEDED "
+    if len(scn_keys) == 2:
+        if ('vv' in scn_keys) and ('vh' in scn_keys):
+            # ------------ Process inc Product ------------- #
+            out_img = os.path.join(out_dir, "{}_inc{}".format(out_base_name, img_ext))
+            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict['vv']['inc'],
+                                                              out_img)
+            try:
+                logger.debug("Running following command using subprocess '{}'".format(cmd))
+                subprocess.call(cmd, shell=True)
+            except OSError as e:
+                logger.error('Cmd Failed: {}'.format(cmd))
+                raise e
+            sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['inc'])
+            out_img_list['inc'] = out_img
+            # ------------ Processed inc Product ------------- #
+
+            # ------------ Process pix Product ------------- #
+            out_vrt_tmp = os.path.join(tmp_dir, "{}_pix_tmp.vrt".format(out_base_name))
+            cmd = "gdalbuildvrt -separate {} {} {}".format(out_vrt_tmp, out_scns_dict['vv']['pix'],
+                                                           out_scns_dict['vh']['pix'])
+            try:
+                logger.debug("Running following command using subprocess '{}'".format(cmd))
+                subprocess.call(cmd, shell=True)
+            except OSError as e:
+                logger.error('Cmd Failed: {}'.format(cmd))
+                raise e
+            out_img = os.path.join(out_dir, "{}_pix{}".format(out_base_name, img_ext))
+            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
+            try:
+                logger.debug("Running following command using subprocess '{}'".format(cmd))
+                subprocess.call(cmd, shell=True)
+            except OSError as e:
+                logger.error('Cmd Failed: {}'.format(cmd))
+                raise e
+            sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh'])
+            out_img_list['pix'] = out_img
+            # ------------ Processed pix Product ------------- #
+
+            # ------------ Process pwr Product ------------- #
+            out_ratio_tmp_file = os.path.join(tmp_dir, "{}_pwr_ratio_tmp.tif".format(out_base_name))
+            sen1_ard_gamma.sen1_ard_utils.calc_ratio_img(out_scns_dict['vv']['pwr'], out_scns_dict['vh']['pwr'],
+                                                         out_ratio_tmp_file, gdal_format)
+
+            out_vrt_tmp = os.path.join(tmp_dir, "{}_pwr_tmp.vrt".format(out_base_name))
+            cmd = "gdalbuildvrt -separate {} {} {} {}".format(out_vrt_tmp, out_scns_dict['vv']['pwr'],
+                                                              out_scns_dict['vh']['pwr'], out_ratio_tmp_file)
+            try:
+                logger.debug("Running following command using subprocess '{}'".format(cmd))
+                subprocess.call(cmd, shell=True)
+            except OSError as e:
+                logger.error('Cmd Failed: {}'.format(cmd))
+                raise e
+            out_img = os.path.join(out_dir, "{}_pwr{}".format(out_base_name, img_ext))
+            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
+            try:
+                logger.debug("Running following command using subprocess '{}'".format(cmd))
+                subprocess.call(cmd, shell=True)
+            except OSError as e:
+                logger.error('Cmd Failed: {}'.format(cmd))
+                raise e
+            sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh', 'vv/vh'])
+            out_img_list['pwr'] = out_img
+            # ------------ Processed pwr Product ------------- #
+        else:
+            raise Exception("Do not recognise the polarisations provided")
+    elif len(scn_keys) == 1:
+        pol = scn_keys[0]
+        for prod in ['inc', 'pix', 'pwr']:
+            out_img = os.path.join(out_dir, "{}_{}{}".format(out_base_name, prod, img_ext))
+            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict[pol][prod], out_img)
+            try:
+                logger.debug("Running following command using subprocess '{}'".format(cmd))
+                subprocess.call(cmd, shell=True)
+            except OSError as e:
+                logger.error('Cmd Failed: {}'.format(cmd))
+                raise e
+            if prod in ['inc', 'lsmap']:
+                sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, [prod])
+            else:
+                sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, [pol])
+            out_img_list[prod] = out_img
+    else:
+        raise Exception("Only know how to stack images with 2 bands or copy single band images.")
+    return out_img_list

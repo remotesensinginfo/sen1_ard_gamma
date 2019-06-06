@@ -40,6 +40,7 @@ import datetime
 import numpy
 
 import osgeo.ogr as ogr
+import osgeo.gdal as gdal
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,7 @@ def preappend_cmd(cmd):
 
     logger.debug("Command outputted: '{}'.".format(fnl_out_cmd))
     return fnl_out_cmd
+
 
 def uidGenerator(size=6):
     """
@@ -391,3 +393,99 @@ def find_sen1_ard_files(input_safe_file):
     safe_files['noise_vh'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'noise*vh*.xml', raise_exp=False)
 
     return safe_files
+
+
+def get_file_extension(gdalformat):
+    """
+    A function to get the extension for a given file format
+    (NOTE, currently only KEA, GTIFF, HFA, PCI and ENVI are supported).
+
+    :return: string
+
+    """
+    ext = ".NA"
+    if gdalformat.lower() == "kea":
+        ext = ".kea"
+    elif gdalformat.lower() == "gtiff":
+        ext = ".tif"
+    elif gdalformat.lower() == "hfa":
+        ext = ".img"
+    elif gdalformat.lower() == "envi":
+        ext = ".env"
+    elif gdalformat.lower() == "pcidsk":
+        ext = ".pix"
+    else:
+        raise Exception("The extension for the gdalformat specified is unknown.")
+    return ext
+
+
+def set_band_names(input_image, band_names, feedback=False):
+    """
+    A utility function to set band names.
+
+    :param input_image: is the input image
+    :param band_names: is a list of band names
+    :param feedback: is a boolean specifying whether feedback will be printed to the console
+                     (True: Printed / False (default) Not Printed)
+
+    """
+    dataset = gdal.Open(input_image, gdal.GA_Update)
+    if dataset is None:
+        raise Exception("Could not open input image: {}".format(input_image))
+    for i in range(len(band_names)):
+        band = i + 1
+        band_name = band_names[i]
+        img_band = dataset.GetRasterBand(band)
+        # Check the image band is available
+        if not img_band is None:
+            if feedback:
+                print('Setting Band {0} to "{1}"'.format(band, band_name))
+            img_band.SetDescription(band_name)
+        else:
+            raise Exception("Could not open the image band: ", band)
+
+
+def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
+    """
+    A function which calculates the ratio image of the VV/HV polarisations.
+
+    :param vv_img: GDAL image with VV polarisation
+    :param vh_img: GDAL image with VH polarisation
+    :param out_img: Output image file.
+    :param gdal_format: Output image file format.
+
+    """
+
+    vv_img_ds = gdal.Open(vv_img)
+    if vv_img_ds is None:
+        raise Exception("Could not open image: {}".format(vv_img))
+    vv_img_band = vv_img_ds.GetRasterBand(1)
+    if vv_img_band is None:
+        raise Exception("Could not open image band {}".format(vv_img))
+    vv_val_arr = vv_img_band.ReadAsArray()
+    vv_img_ds = None
+
+    vh_img_ds = gdal.Open(vh_img)
+    if vh_img_ds is None:
+        raise Exception("Could not open image: {}".format(vh_img))
+    vh_img_band = vh_img_ds.GetRasterBand(1)
+    if vh_img_band is None:
+        raise Exception("Could not open image band {}".format(vh_img))
+    vh_val_arr = vh_img_band.ReadAsArray()
+    vh_img_ds = None
+
+    ratio_img_arr = numpy.where(vh_val_arr>0.0, vv_val_arr/vh_val_arr, 0.0)
+
+    out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, x_pxls, y_pxls, 1, gdal.GDT_Float32)
+    if out_ratios_file_ds == None:
+        raise Exception('Could not create ratio image output raster: \'' + out_img + '\'')
+    out_ratios_file_ds.SetGeoTransform((out_tlX, out_res_x, 0, out_tlY, 0, out_res_y))
+    out_ratios_file_ds.SetProjection(out_spat_ref.ExportToWkt())
+    out_ratio_band = out_ratios_file_ds.GetRasterBand(1)
+    if out_ratio_band == None:
+        raise Exception('Could not open ratio image band: \'' + out_img + '\'')
+    out_ratio_band.SetNoDataValue(0.0)
+    logger.debug("Created ratio output image file: {}".format(out_img))
+
+
+
