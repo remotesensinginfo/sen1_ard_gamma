@@ -31,9 +31,12 @@ sen1_ard_gamma - tools for Sentinel-1 GRD processing using Gamma
 # History:
 # Version 1.0 - Created.
 
-import argparse
+import sys
+sys.path.append("..")
 
+import argparse
 import os.path
+import glob
 
 import osgeo.gdal as gdal
 
@@ -56,14 +59,14 @@ if __name__ == "__main__":
                         help='''Specify the polarisations to be processed. If None then all processed.
                                 Default is None.''')
     parser.add_argument("-f", "--format", type=str, default="GTIFF", help="Provide GDAL format for final output files.")
+    parser.add_argument("--nostats", action='store_true', default=False,
+                        help="Specifies that the image statistics and pyramids should be build for all output images.")
 
     args = parser.parse_args()
 
     scn_metadata_info = sen1_ard_gamma.sen1_ard_utils.retrieve_sentinel1_metadata(args.input)
-    print(scn_metadata_info)
 
     scn_safe_files = sen1_ard_gamma.sen1_ard_utils.find_sen1_ard_files(args.input)
-    print(scn_safe_files)
 
     scn_basename = sen1_ard_gamma.sen1_ard_utils.create_sentinel1_basename(scn_metadata_info)
     print("Basename for scene: {}".format(scn_basename))
@@ -76,7 +79,7 @@ if __name__ == "__main__":
             if pol not in scn_metadata_info['product_polarisations']:
                 raise Exception("Polarisation {} is not within the scene provided.")
 
-    c_uid = sen1_ard_gamma.sen1_ard_utils.uidGenerator()
+    c_uid = 'cde44f'#sen1_ard_gamma.sen1_ard_utils.uidGenerator()
     c_tmp_dir = os.path.join(args.tmpdir, '{}_tmp_{}'.format(scn_basename, c_uid))
     c_tmp_dir_created = False
     if not os.path.exists(c_tmp_dir):
@@ -94,16 +97,36 @@ if __name__ == "__main__":
     out_scns = dict()
     first = True
     for pol in polarisations:
-        c_scn_basename = scn_basename + '_' + pol.lower()
-        print(c_scn_basename)
-        out_scns['c_scn_basename'] = dict()
         pol_lower = pol.lower()
+        c_scn_basename = scn_basename + '_' + pol_lower
+        """
         sen1_ard_gamma.sen1_grd_ard_tools.run_gamma_grd_ard_processing(scn_safe_files['measure_'+pol_lower],
                                                                        scn_safe_files['annotation_'+pol_lower],
                                                                        scn_safe_files['calibration_'+pol_lower],
                                                                        scn_safe_files['noise_'+pol_lower],
-                                                                       args.dem, demparfile, scn_basename, c_out_dir,
-                                                                       c_tmp_dir, args.resolution, args.resolution,
+                                                                       args.dem, demparfile, c_scn_basename, c_out_dir,
+                                                                       c_tmp_dir, args.resolution, -args.resolution,
                                                                        args.projepsg, use_dem_file=(not first),
                                                                        check_in_dem_filename=True,
                                                                        dem_resample_method=gdal.GRA_CubicSpline)
+        """
+        out_scns[pol_lower] = dict()
+        out_files = glob.glob(os.path.join(c_out_dir, "{}*.tif".format(c_scn_basename)))
+        for img_file in out_files:
+            img_file_name = os.path.basename(img_file)
+            if 'inc' in img_file_name:
+                out_scns[pol_lower]['inc'] = img_file
+            elif 'lsmap' in img_file_name:
+                out_scns[pol_lower]['lsmap'] = img_file
+            elif 'pix' in img_file_name:
+                out_scns[pol_lower]['pix'] = img_file
+            elif 'pwr' in img_file_name:
+                out_scns[pol_lower]['pwr'] = img_file
+        first = False
+
+    print(out_scns)
+    fnl_out_imgs = sen1_ard_gamma.sen1_grd_ard_tools.create_pol_stacked_products(out_scns, scn_basename, c_out_dir,
+                                                                                 args.output, args.format)
+
+    if not args.nostats:
+        print("Calc image stats.")
