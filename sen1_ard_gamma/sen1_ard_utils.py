@@ -384,10 +384,10 @@ def find_sen1_ard_files(input_safe_file):
     safe_files['annotation_vv'] = findFile(os.path.join(input_safe_file, 'annotation'), '*vv*.xml', raise_exp=False)
     safe_files['annotation_vh'] = findFile(os.path.join(input_safe_file, 'annotation'), '*vh*.xml', raise_exp=False)
 
-    safe_files['calibration_vv'] = findFile(os.path.join(input_safe_file, 'calibration'), 'calibration*vv*.xml', raise_exp=False)
-    safe_files['calibration_vh'] = findFile(os.path.join(input_safe_file, 'calibration'), 'calibration*vh*.xml', raise_exp=False)
+    safe_files['calibration_vv'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'calibration*vv*.xml', raise_exp=False)
+    safe_files['calibration_vh'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'calibration*vh*.xml', raise_exp=False)
 
-    safe_files['noise_vv'] = findFile(os.path.join(input_safe_file, 'calibration'), 'noise*vv*.xml', raise_exp=False)
-    safe_files['noise_vh'] = findFile(os.path.join(input_safe_file, 'calibration'), 'noise*vh*.xml', raise_exp=False)
+    safe_files['noise_vv'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'noise*vv*.xml', raise_exp=False)
+    safe_files['noise_vh'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'noise*vh*.xml', raise_exp=False)
 
     return safe_files

@@ -180,7 +180,6 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
         logger.debug("Output DEM will have file name: '{}'".format(dem_reproj_file))
 
         sen1_bbox_wgs84 = get_sen1_latlong_bbox(ann_sen1_xml)
-        print(sen1_bbox_wgs84)
         logger.debug("WGS84 BBOX of input Sentinel 1 scene: [{}, {}, {}, {}]".format(sen1_bbox_wgs84[0],
                                                                                      sen1_bbox_wgs84[1],
                                                                                      sen1_bbox_wgs84[2],
@@ -232,7 +231,6 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     inc = float(pardict['incidence_angle'][0])
 
     demdict = sen1_ard_gamma.sen1_ard_utils.gamma_par_dict(demparfile)
-    print(demdict)
     proj = demdict['DEM_projection'][0]
     if proj == 'EQA':
         dem_xres = float(demdict['post_lon'][0])
@@ -601,4 +599,4 @@ def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
 
 
 def create_pol_stacked_products():
-    print("HERE")
+    logger.info("create_pol_stacked_products - needs to be implemented.")
