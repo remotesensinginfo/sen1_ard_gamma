@@ -50,6 +50,8 @@ SEN1_ARD_GAMMA_COPYRIGHT_NAMES = "Pete Bunting"
 
 SEN1_ARD_GAMMA_SUPPORT_EMAIL = "pfb@aber.ac.uk"
 
+SEN1_POLS = ['VV', 'VH']
+
 log_default_level=logging.INFO
 
 # Get install prefix
