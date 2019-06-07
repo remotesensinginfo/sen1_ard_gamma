@@ -495,7 +495,10 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     if (vv_geotransform[2] != vh_geotransform[2]) and (vv_geotransform[4] != vh_geotransform[4]):
         raise Exception("The image rotation is not the same for the VV and HV images.")
 
-    ratio_img_arr = numpy.where(vh_val_arr>0.0, vv_val_arr/vh_val_arr, 0.0)
+    ratio_img_arr = numpy.where((numpy.isfinite(vv_val_arr) & (vv_val_arr > 0.0) & numpy.isfinite(vh_val_arr) & (vh_val_arr > 0.0)), vv_val_arr / vh_val_arr, 0.0)
+
+    ratio_img_arr[numpy.isnan(ratio_img_arr)] = 0.0
+    ratio_img_arr[numpy.isinf(ratio_img_arr)] = 0.0
 
     out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, vv_x_pxls, vv_y_pxls, 1, gdal.GDT_Float32)
     if out_ratios_file_ds == None:
@@ -510,4 +513,59 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     logger.debug("Created ratio output image file: {}".format(out_img))
 
 
+def convert_to_dB(input_img, output_img, gdal_format):
+    """
 
+    :param input_img:
+    :param output_img:
+    :param gdal_format:
+    :return:
+    """
+    img_ds = gdal.Open(input_img)
+    if img_ds is None:
+        raise Exception("Could not open image: {}".format(input_img))
+
+    # Get Header information.
+    geotransform = img_ds.GetGeoTransform()
+    x_pxls = img_ds.RasterXSize
+    y_pxls = img_ds.RasterYSize
+    proj_str = img_ds.GetProjection()
+    n_bands = img_ds.RasterCount
+
+    out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32)
+    if out_img_ds == None:
+        raise Exception('Could not create dB image output raster: \'' + output_img + '\'')
+    out_img_ds.SetGeoTransform(geotransform)
+    out_img_ds.SetProjection(proj_str)
+
+    for band in range(n_bands):
+        band = band + 1
+        img_band = img_ds.GetRasterBand(band)
+        if img_band is None:
+            raise Exception("Could not open image band {} from {}".format(band, input_img))
+        val_arr = img_band.ReadAsArray()
+
+        if band == 1:
+            msk_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr)), 1, 0)
+        else:
+            msk_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr) & (msk_arr == 1)), 1, 0)
+
+    for band in range(n_bands):
+        band = band + 1
+        img_band = img_ds.GetRasterBand(band)
+        if img_band is None:
+            raise Exception("Could not open image band {} from {}".format(band, input_img))
+        val_arr = img_band.ReadAsArray()
+
+        dB_img_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr) & (msk_arr == 1)), 10 * numpy.log10(val_arr), 999)
+        dB_img_arr[numpy.isnan(dB_img_arr)] = 999
+        dB_img_arr[numpy.isinf(dB_img_arr)] = 999
+
+        out_img_band = out_img_ds.GetRasterBand(band)
+        if out_img_band == None:
+            raise Exception("Could not open image band {} from {}".format(band, output_img))
+        out_img_band.SetNoDataValue(999)
+        out_img_band.WriteArray(dB_img_arr)
+
+    img_ds = None
+    out_img_ds = None

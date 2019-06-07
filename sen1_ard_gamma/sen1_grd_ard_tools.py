@@ -703,7 +703,13 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
             out_img_list[prod] = out_img
     else:
         raise Exception("Only know how to stack images with 2 bands or copy single band images.")
+    if 'pwr' in out_img_list:
+        logger.debug("Calculate dB image from power.")
+        out_dB_img = os.path.join(out_dir, "{}_dB{}".format(out_base_name, img_ext))
+        sen1_ard_gamma.sen1_ard_utils.convert_to_dB(out_img_list['pwr'], out_dB_img, gdal_format)
+        out_img_list['dB'] = out_dB_img
     return out_img_list
+
 
 def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file, out_img_res, out_proj_epsg,
                               polarisations, gdal_format, calc_no_stats, keep_files):
@@ -735,7 +741,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
             if pol not in scn_metadata_info['product_polarisations']:
                 raise Exception("Polarisation {} is not within the scene provided.")
 
-    c_uid = 'cde44f'  # sen1_ard_gamma.sen1_ard_utils.uidGenerator()
+    c_uid = sen1_ard_gamma.sen1_ard_utils.uidGenerator()
     c_tmp_dir = os.path.join(tmp_dir, '{}_tmp_{}'.format(scn_basename, c_uid))
     c_tmp_dir_created = False
     if not os.path.exists(c_tmp_dir):
@@ -756,7 +762,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
         pol_lower = pol.lower()
         c_scn_basename = scn_basename + '_' + pol_lower
         logger.info("Processing {} Polarisation.".format(pol))
-        """
+
         sen1_ard_gamma.sen1_grd_ard_tools.exe_gamma_grd_ard_processing(scn_safe_files['measure_' + pol_lower],
                                                                        scn_safe_files['annotation_' + pol_lower],
                                                                        scn_safe_files['calibration_' + pol_lower],
@@ -766,7 +772,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
                                                                        out_proj_epsg, use_dem_file=(not first),
                                                                        check_in_dem_filename=True,
                                                                        dem_resample_method=gdal.GRA_CubicSpline)
-        """
+
         out_scns[pol_lower] = dict()
         out_files = glob.glob(os.path.join(c_out_dir, "{}*.tif".format(c_scn_basename)))
         for img_file in out_files:
@@ -795,14 +801,12 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
         if 'pwr' in fnl_out_imgs:
             sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['pwr'], no_data_val=0.0)
         if 'dB' in fnl_out_imgs:
-            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['dB'], no_data_val=9999)
+            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['dB'], no_data_val=999)
 
-    """
     if not keep_files:
         if c_tmp_dir_created:
             shutil.rmtree(c_tmp_dir)
         if c_out_dir_created:
             shutil.rmtree(c_out_dir)
-    """
 
     logger.info("Completed all data processing stages; outputs in {}".format(output_dir))
