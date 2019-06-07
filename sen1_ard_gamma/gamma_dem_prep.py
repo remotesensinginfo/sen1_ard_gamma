@@ -99,6 +99,15 @@ def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, ou
     out_brX, out_brY = sen1_ard_gamma.sen1_ard_utils.reproj_point(in_spat_ref, out_spat_ref, brX, brY)
     logger.debug("Calculated UTM BBox: [{}, {}, {}, {}]".format(out_tlX, out_brX, out_brY, out_tlY))
 
+    # Snap TL to whole pixel so outputs on whole pixel grid.
+    n_pxl_tl_x = math.floor(out_tlX / out_res_x)
+    n_pxl_tl_y = math.ceil(out_tlY / ((-1) * out_res_y))
+    logger.debug("N Pixels to TL: [{}, {}]".format(n_pxl_tl_x, n_pxl_tl_y))
+
+    out_tlX = n_pxl_tl_x * out_res_x
+    out_tlY = n_pxl_tl_y * ((-1) * out_res_y)
+    logger.debug("Calculated UTM BBox (whole num grid): [{}, {}, {}, {}]".format(out_tlX, out_brX, out_brY, out_tlY))
+
     x_pxls = math.ceil((out_brX - out_tlX) / out_res_x)
     y_pxls = math.ceil((out_tlY - out_brY) / ((-1) * out_res_y))
 
