@@ -495,7 +495,9 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     if (vv_geotransform[2] != vh_geotransform[2]) and (vv_geotransform[4] != vh_geotransform[4]):
         raise Exception("The image rotation is not the same for the VV and HV images.")
 
-    ratio_img_arr = numpy.where((numpy.isfinite(vv_val_arr) & (vv_val_arr > 0.0) & numpy.isfinite(vh_val_arr) & (vh_val_arr > 0.0)), vv_val_arr / vh_val_arr, 0.0)
+    ratio_img_arr = numpy.where(
+        (numpy.isfinite(vv_val_arr) & (vv_val_arr > 0.0) & numpy.isfinite(vh_val_arr) & (vh_val_arr > 0.0)),
+        vv_val_arr / vh_val_arr, 0.0)
 
     ratio_img_arr[numpy.isnan(ratio_img_arr)] = 0.0
     ratio_img_arr[numpy.isinf(ratio_img_arr)] = 0.0
@@ -533,7 +535,12 @@ def convert_to_dB(input_img, output_img, gdal_format):
     proj_str = img_ds.GetProjection()
     n_bands = img_ds.RasterCount
 
-    out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32)
+    co = []
+    if gdal_format == "GTIFF":
+        co = ["-co TILED=YES", "-co COMPRESS=LZW", "-co BIGTIFF=IF_NEEDED"]
+
+    out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32,
+                                                          options=co)
     if out_img_ds == None:
         raise Exception("Could not create dB image output raster: '{}'.".format(output_img))
     out_img_ds.SetGeoTransform(geotransform)
@@ -558,7 +565,8 @@ def convert_to_dB(input_img, output_img, gdal_format):
             raise Exception("Could not open image band {} from {}".format(band, input_img))
         val_arr = img_band.ReadAsArray()
 
-        dB_img_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr) & (msk_arr == 1)), 10 * numpy.log10(val_arr), 999)
+        dB_img_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr) & (msk_arr == 1)),
+                                 10 * numpy.log10(val_arr), 999)
         dB_img_arr[numpy.isnan(dB_img_arr)] = 999
         dB_img_arr[numpy.isinf(dB_img_arr)] = 999
 
