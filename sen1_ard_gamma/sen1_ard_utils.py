@@ -515,11 +515,12 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
 
 def convert_to_dB(input_img, output_img, gdal_format):
     """
+    Convert power image to decibels (dB) by applying 10 x log10(pwr)
 
-    :param input_img:
-    :param output_img:
-    :param gdal_format:
-    :return:
+    :param input_img: Input power image
+    :param output_img: Output dB image
+    :param gdal_format: GDAL image format for output image
+
     """
     img_ds = gdal.Open(input_img)
     if img_ds is None:
@@ -534,7 +535,7 @@ def convert_to_dB(input_img, output_img, gdal_format):
 
     out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32)
     if out_img_ds == None:
-        raise Exception('Could not create dB image output raster: \'' + output_img + '\'')
+        raise Exception("Could not create dB image output raster: '{}'.".format(output_img))
     out_img_ds.SetGeoTransform(geotransform)
     out_img_ds.SetProjection(proj_str)
 

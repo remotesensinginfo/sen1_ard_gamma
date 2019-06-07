@@ -114,7 +114,7 @@ def get_sen1_latlong_bbox(ann_sen1_xml):
 
 def exe_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_xml, in_dem_file, demparfile,
                                  outbasename, out_dir, tmp_dir, out_res_x, out_res_y, out_proj_epsg=None,
-                                 use_dem_file=True, check_in_dem_filename=False,
+                                 use_dem_file=True, check_in_dem_filename=False, no_dem_check=False,
                                  dem_resample_method=gdal.GRA_CubicSpline):
     """
     Function to run through a Gamma processing chain to geocode and topographically correct Sentinel-1 GRD data.
@@ -143,6 +143,7 @@ def exe_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     :param use_dem_file: Boolean. If True the DEM file is expected to be available within Gamma format.
     :param check_in_dem_filename: If True then the DEM file name will be derived from the demparfile (by removing
                                   extension and adding .dem).
+    :param no_dem_check: If True the DEM is not checked for no data value and minimum value for Gamma compatibility
     :param dem_resample_method: specify the gdal resampling method for the DEM processing (if DEM being subsetted
                                 and reprojected). Default: gdal.GRA_CubicSpline
 
@@ -202,7 +203,7 @@ def exe_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
 
         sen1_ard_gamma.gamma_dem_prep.subset_reproj_utm_dem_file(in_dem_file, sen1_bbox_wgs84, out_res_x, out_res_y,
                                                                  out_proj_epsg, dem_reproj_file, demparfile, tmp_dir,
-                                                                 eResampleAlg=dem_resample_method)
+                                                                 no_dem_check, eResampleAlg=dem_resample_method)
 
         demfile = dem_reproj_file
     logger.debug("Finished Importing DEM.")
@@ -712,7 +713,7 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
 
 
 def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file, out_img_res, out_proj_epsg,
-                              polarisations, gdal_format, calc_no_stats, keep_files):
+                              polarisations, gdal_format, calc_no_stats, keep_files, no_dem_check):
     """
     High level function which runs the analysis of a Sentinel-1 GRD scene to an ARD product.
 
@@ -726,6 +727,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
     :param gdal_format:
     :param calc_no_stats:
     :param keep_files:
+    :param no_dem_check: If True the DEM is not checked for no data value and minimum value for Gamma compatibility
     """
     scn_metadata_info = sen1_ard_gamma.sen1_ard_utils.retrieve_sentinel1_metadata(input_safe_file)
 
@@ -770,7 +772,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
                                                                        dem_img_file, demparfile, c_scn_basename, c_out_dir,
                                                                        c_tmp_dir, out_img_res, -out_img_res,
                                                                        out_proj_epsg, use_dem_file=(not first),
-                                                                       check_in_dem_filename=True,
+                                                                       check_in_dem_filename=True, no_dem_check=False,
                                                                        dem_resample_method=gdal.GRA_CubicSpline)
 
         out_scns[pol_lower] = dict()

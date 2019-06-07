@@ -58,9 +58,12 @@ if __name__ == "__main__":
                         help="Specifies that the image statistics and pyramids should be build for all output images.")
     parser.add_argument("--keepfiles", action='store_true', default=False,
                         help="Specifies intermediate files within the --tmpdir should be kept (normally for debugging).")
+    parser.add_argument("--nodemcheck", action='store_true', default=False,
+                        help="Specifies that the DEM should not be checked to ensure the minimum value is 1 with a "
+                             " no data value of 0 (zero) which is used by Gamma.")
 
     args = parser.parse_args()
 
     sen1_ard_gamma.sen1_grd_ard_tools.run_sen1_grd_ard_analysis(args.input, args.output, args.tmpdir, args.dem,
                                                                 args.resolution, args.projepsg, args.pol, args.format,
-                                                                args.nostats, args.keepfiles)
+                                                                args.nostats, args.keepfiles, args.nodemcheck)

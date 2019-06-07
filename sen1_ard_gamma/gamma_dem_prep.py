@@ -38,6 +38,7 @@ import osgeo.osr as osr
 import osgeo.gdal as gdal
 
 import math
+import numpy
 
 import sen1_ard_gamma.sen1_ard_utils
 
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
 gdal.UseExceptions()
 
 def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, out_proj_epsg, out_dem_file,
-                               out_dem_par_file, tmp_dir, eResampleAlg=gdal.GRA_CubicSpline):
+                               out_dem_par_file, tmp_dir, no_dem_check=False, eResampleAlg=gdal.GRA_CubicSpline):
     """
     Function to subset and reproject a DEM provided in a GDAL compatiable format (e.g., GTIFF) into a format
     compatiable with Gamma.
@@ -61,7 +62,9 @@ def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, ou
     :param out_dem_file: output DEM binary file
     :param out_dem_par_file: output DEM parameter file
     :param tmp_dir: directory for temporary outputs.
-    :param eResampleAlg:
+    :param no_dem_check: If True the DEM is not checked for no data value and minimum value for Gamma compatibility
+    :param eResampleAlg: specify the gdal resampling method for the DEM processing (if DEM being subsetted and
+                         reprojected). Default: gdal.GRA_CubicSpline
     """
     logger.debug("Starting to run subset_reproj_utm_dem_file")
     in_dem_file_ds = gdal.Open(in_dem_file, gdal.GA_ReadOnly)
@@ -122,6 +125,15 @@ def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, ou
     logger.debug("Finished gdal warp for: {}".format(out_dem_tmp_file))
     in_dem_file_ds = None
     out_dem_file_ds = None
+
+    if not no_dem_check:
+        logger.debug("Going to check DEM if no data value is not zero.")
+        if no_data_val != 0:
+            out_dem_tmp_chk_file = os.path.join(tmp_dir,
+                                                os.path.splitext(os.path.basename(out_dem_file))[0] + '_tmpdem_chk.dem')
+            logger.debug("Checking DEM as no data value is not zero; output image: {}".format(out_dem_tmp_chk_file))
+            check_dem_for_gamma_compat(out_dem_tmp_file, out_dem_tmp_chk_file, no_data_val)
+            out_dem_tmp_file = out_dem_tmp_chk_file
 
     logger.debug("Start byte swap to create: {}".format(out_dem_file))
     cmd = 'swap_bytes {0} {1} 2'.format(out_dem_tmp_file, out_dem_file)
@@ -188,3 +200,52 @@ center_latitude:          0.0000000   decimal degrees\n'''.format(**imageparamet
     out_par_file.close()
     logger.debug("Created dem par file.")
     logger.debug("Finished running subset_reproj_utm_dem_file")
+
+
+def check_dem_for_gamma_compat(input_dem_img, output_dem_img, no_data_val):
+    """
+    DEM is checked for no data value (will be 0) and minimum value of 1 for Gamma compatibility.
+    The DEM will be outputted in ENVI format.
+
+    :param input_dem_img: Input DEM image
+    :param output_img: Output DEM image
+    :param no_data_val: The current no data value for the DEM.
+
+    """
+    logger.debug("Starting to check DEM for Gamma compatibility.")
+    img_ds = gdal.Open(input_dem_img)
+    if img_ds is None:
+        raise Exception("Could not open image: {}".format(input_dem_img))
+
+    # Get Header information.
+    geotransform = img_ds.GetGeoTransform()
+    x_pxls = img_ds.RasterXSize
+    y_pxls = img_ds.RasterYSize
+    proj_str = img_ds.GetProjection()
+
+    out_img_ds = gdal.GetDriverByName('ENVI').Create(output_dem_img, x_pxls, y_pxls, 1, gdal.GDT_Int16)
+    if out_img_ds == None:
+        raise Exception("Could not create DEM image output raster: '{}'.".format(output_dem_img))
+    out_img_ds.SetGeoTransform(geotransform)
+    out_img_ds.SetProjection(proj_str)
+
+    img_band = img_ds.GetRasterBand(1)
+    if img_band is None:
+        raise Exception("Could not open image band 1 from {}".format(input_dem_img))
+    val_arr = img_band.ReadAsArray()
+
+    out_img_band = out_img_ds.GetRasterBand(1)
+    if out_img_band == None:
+        raise Exception("Could not open image band 1 from {}".format(output_dem_img))
+    out_img_band.SetNoDataValue(0)
+    logger.debug("Created output file and read input data.")
+
+    val_arr[val_arr == 0] = 1
+    val_arr[val_arr == no_data_val] = 0
+    val_arr[val_arr < 0] = 0
+
+    out_img_band.WriteArray(val_arr)
+
+    img_ds = None
+    out_img_ds = None
+    logger.debug("Written revised DEM to output image file - finished Gamma DEM compatibility function .")
