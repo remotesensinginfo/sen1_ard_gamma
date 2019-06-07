@@ -33,6 +33,8 @@ sen1_ard_gamma - tools for Sentinel-1 GRD processing using Gamma
 
 import os
 import os.path
+import glob
+import shutil
 
 import math
 
@@ -42,10 +44,12 @@ import osgeo.gdal as gdal
 
 import sen1_ard_gamma.sen1_ard_utils
 import sen1_ard_gamma.gamma_dem_prep
+import sen1_ard_gamma.calc_img_stats
 
 import logging
-
 logger = logging.getLogger(__name__)
+
+gdal.UseExceptions()
 
 def get_sen1_latlong_bbox(ann_sen1_xml):
     """
@@ -108,7 +112,7 @@ def get_sen1_latlong_bbox(ann_sen1_xml):
     return [min_lon, max_lon, min_lat, max_lat]
 
 
-def run_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_xml, in_dem_file, demparfile,
+def exe_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_xml, in_dem_file, demparfile,
                                  outbasename, out_dir, tmp_dir, out_res_x, out_res_y, out_proj_epsg=None,
                                  use_dem_file=True, check_in_dem_filename=False,
                                  dem_resample_method=gdal.GRA_CubicSpline):
@@ -700,3 +704,105 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
     else:
         raise Exception("Only know how to stack images with 2 bands or copy single band images.")
     return out_img_list
+
+def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file, out_img_res, out_proj_epsg,
+                              polarisations, gdal_format, calc_no_stats, keep_files):
+    """
+    High level function which runs the analysis of a Sentinel-1 GRD scene to an ARD product.
+
+    :param input_safe_file:
+    :param output_dir:
+    :param tmp_dir:
+    :param dem_img_file:
+    :param out_img_res:
+    :param out_proj_epsg:
+    :param polarisations:
+    :param gdal_format:
+    :param calc_no_stats:
+    :param keep_files:
+    """
+    scn_metadata_info = sen1_ard_gamma.sen1_ard_utils.retrieve_sentinel1_metadata(input_safe_file)
+
+    scn_safe_files = sen1_ard_gamma.sen1_ard_utils.find_sen1_ard_files(input_safe_file)
+
+    scn_basename = sen1_ard_gamma.sen1_ard_utils.create_sentinel1_basename(scn_metadata_info)
+    print("Basename for scene: {}".format(scn_basename))
+
+    if polarisations is None:
+        polarisations = scn_metadata_info['product_polarisations']
+    else:
+        for pol in polarisations:
+            if pol not in scn_metadata_info['product_polarisations']:
+                raise Exception("Polarisation {} is not within the scene provided.")
+
+    c_uid = 'cde44f'  # sen1_ard_gamma.sen1_ard_utils.uidGenerator()
+    c_tmp_dir = os.path.join(tmp_dir, '{}_tmp_{}'.format(scn_basename, c_uid))
+    c_tmp_dir_created = False
+    if not os.path.exists(c_tmp_dir):
+        os.mkdir(c_tmp_dir)
+        c_tmp_dir_created = True
+
+    c_out_dir = os.path.join(tmp_dir, '{}_{}'.format(scn_basename, c_uid))
+    c_out_dir_created = False
+    if not os.path.exists(c_out_dir):
+        os.mkdir(c_out_dir)
+        c_out_dir_created = True
+
+    demparfile = os.path.join(c_tmp_dir, scn_basename + '_gamma_scn_dem.dem_par')
+
+    out_scns = dict()
+    first = True
+    for pol in polarisations:
+        pol_lower = pol.lower()
+        c_scn_basename = scn_basename + '_' + pol_lower
+        logger.info("Processing {} Polarisation.".format(pol))
+        """
+        sen1_ard_gamma.sen1_grd_ard_tools.exe_gamma_grd_ard_processing(scn_safe_files['measure_' + pol_lower],
+                                                                       scn_safe_files['annotation_' + pol_lower],
+                                                                       scn_safe_files['calibration_' + pol_lower],
+                                                                       scn_safe_files['noise_' + pol_lower],
+                                                                       dem_img_file, demparfile, c_scn_basename, c_out_dir,
+                                                                       c_tmp_dir, out_img_res, -out_img_res,
+                                                                       out_proj_epsg, use_dem_file=(not first),
+                                                                       check_in_dem_filename=True,
+                                                                       dem_resample_method=gdal.GRA_CubicSpline)
+        """
+        out_scns[pol_lower] = dict()
+        out_files = glob.glob(os.path.join(c_out_dir, "{}*.tif".format(c_scn_basename)))
+        for img_file in out_files:
+            img_file_name = os.path.basename(img_file)
+            if 'inc' in img_file_name:
+                out_scns[pol_lower]['inc'] = img_file
+            elif 'lsmap' in img_file_name:
+                out_scns[pol_lower]['lsmap'] = img_file
+            elif 'pix' in img_file_name:
+                out_scns[pol_lower]['pix'] = img_file
+            elif 'pwr' in img_file_name:
+                out_scns[pol_lower]['pwr'] = img_file
+        first = False
+
+    logger.info("Creating final image outputs")
+    # Create final output images with bands stacked where appropriate and ratio image (vv/vh) calculated.
+    fnl_out_imgs = sen1_ard_gamma.sen1_grd_ard_tools.create_pol_stacked_products(out_scns, scn_basename, c_out_dir,
+                                                                                 output_dir, gdal_format)
+
+    if not calc_no_stats:
+        logger.info("Calculating image statistics and pyramids for final outputs")
+        if 'inc' in fnl_out_imgs:
+            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['inc'], no_data_val=0.0)
+        if 'pix' in fnl_out_imgs:
+            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['pix'], no_data_val=0.0)
+        if 'pwr' in fnl_out_imgs:
+            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['pwr'], no_data_val=0.0)
+        if 'dB' in fnl_out_imgs:
+            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['dB'], no_data_val=9999)
+
+    """
+    if not keep_files:
+        if c_tmp_dir_created:
+            shutil.rmtree(c_tmp_dir)
+        if c_out_dir_created:
+            shutil.rmtree(c_out_dir)
+    """
+
+    logger.info("Completed all data processing stages; outputs in {}".format(output_dir))

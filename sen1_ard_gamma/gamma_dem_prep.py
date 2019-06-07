@@ -35,7 +35,6 @@ import os.path
 import subprocess
 
 import osgeo.osr as osr
-import osgeo.ogr as ogr
 import osgeo.gdal as gdal
 
 import math
@@ -45,6 +44,8 @@ import sen1_ard_gamma.sen1_ard_utils
 import logging
 
 logger = logging.getLogger(__name__)
+
+gdal.UseExceptions()
 
 def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, out_proj_epsg, out_dem_file,
                                out_dem_par_file, tmp_dir, eResampleAlg=gdal.GRA_CubicSpline):

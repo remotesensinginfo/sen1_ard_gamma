@@ -44,6 +44,7 @@ import osgeo.gdal as gdal
 
 logger = logging.getLogger(__name__)
 
+gdal.UseExceptions()
 
 def preappend_cmd(cmd):
     """
@@ -455,7 +456,6 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     :param gdal_format: Output image file format.
 
     """
-
     vv_img_ds = gdal.Open(vv_img)
     if vv_img_ds is None:
         raise Exception("Could not open image: {}".format(vv_img))
@@ -463,6 +463,11 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     if vv_img_band is None:
         raise Exception("Could not open image band {}".format(vv_img))
     vv_val_arr = vv_img_band.ReadAsArray()
+    # Get Header information.
+    vv_geotransform = vv_img_ds.GetGeoTransform()
+    vv_x_pxls = vv_img_ds.RasterXSize
+    vv_y_pxls = vv_img_ds.RasterYSize
+    vv_proj_str = vv_img_ds.GetProjection()
     vv_img_ds = None
 
     vh_img_ds = gdal.Open(vh_img)
@@ -472,19 +477,36 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     if vh_img_band is None:
         raise Exception("Could not open image band {}".format(vh_img))
     vh_val_arr = vh_img_band.ReadAsArray()
+    # Get Header information.
+    vh_geotransform = vh_img_ds.GetGeoTransform()
+    vh_x_pxls = vh_img_ds.RasterXSize
+    vh_y_pxls = vh_img_ds.RasterYSize
     vh_img_ds = None
+
+    if (vv_x_pxls != vh_x_pxls) and (vv_y_pxls != vh_y_pxls):
+        raise Exception("The VV and HV images have different numbers of pixels.")
+
+    if (vv_geotransform[0] != vh_geotransform[0]) and (vv_geotransform[3] != vh_geotransform[3]):
+        raise Exception("The Top-Left corner coordinate is not the same for the VV and HV images.")
+
+    if (vv_geotransform[1] != vh_geotransform[1]) and (vv_geotransform[5] != vh_geotransform[5]):
+        raise Exception("The image pixel resolution is not the same for the VV and HV images.")
+
+    if (vv_geotransform[2] != vh_geotransform[2]) and (vv_geotransform[4] != vh_geotransform[4]):
+        raise Exception("The image rotation is not the same for the VV and HV images.")
 
     ratio_img_arr = numpy.where(vh_val_arr>0.0, vv_val_arr/vh_val_arr, 0.0)
 
-    out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, x_pxls, y_pxls, 1, gdal.GDT_Float32)
+    out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, vv_x_pxls, vv_y_pxls, 1, gdal.GDT_Float32)
     if out_ratios_file_ds == None:
         raise Exception('Could not create ratio image output raster: \'' + out_img + '\'')
-    out_ratios_file_ds.SetGeoTransform((out_tlX, out_res_x, 0, out_tlY, 0, out_res_y))
-    out_ratios_file_ds.SetProjection(out_spat_ref.ExportToWkt())
+    out_ratios_file_ds.SetGeoTransform(vv_geotransform)
+    out_ratios_file_ds.SetProjection(vv_proj_str)
     out_ratio_band = out_ratios_file_ds.GetRasterBand(1)
     if out_ratio_band == None:
         raise Exception('Could not open ratio image band: \'' + out_img + '\'')
     out_ratio_band.SetNoDataValue(0.0)
+    out_ratio_band.WriteArray(ratio_img_arr)
     logger.debug("Created ratio output image file: {}".format(out_img))
 
 
