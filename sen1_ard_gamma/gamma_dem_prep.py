@@ -104,8 +104,8 @@ def subset_reproj_utm_dem_file(in_dem_file, bbox_wgs84, out_res_x, out_res_y, ou
     n_pxl_tl_y = math.ceil(out_tlY / ((-1) * out_res_y))
     logger.debug("N Pixels to TL: [{}, {}]".format(n_pxl_tl_x, n_pxl_tl_y))
 
-    out_tlX = n_pxl_tl_x * out_res_x
-    out_tlY = n_pxl_tl_y * ((-1) * out_res_y)
+    out_tlX = (n_pxl_tl_x * out_res_x) - (out_res_x / 2)
+    out_tlY = (n_pxl_tl_y * ((-1) * out_res_y)) + (((-1) * out_res_y) / 2)
     logger.debug("Calculated UTM BBox (whole num grid): [{}, {}, {}, {}]".format(out_tlX, out_brX, out_brY, out_tlY))
 
     x_pxls = math.ceil((out_brX - out_tlX) / out_res_x)

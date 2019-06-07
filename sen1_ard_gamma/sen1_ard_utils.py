@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 
 gdal.UseExceptions()
 
+
 def preappend_cmd(cmd):
     """
     For using docker or singularity the command needs to be pre-appended and potentially the
@@ -65,10 +66,7 @@ def preappend_cmd(cmd):
         return cmd
     logger.debug("S1ARD_PAP_CMD is defined: '{}'.".format(pap_cmd))
 
-    out_cmd = "{} {}".format(pap_cmd, cmd)
-    logger.debug("Command appended: '{}'.".format(out_cmd))
-
-    fnl_out_cmd = out_cmd
+    out_cmd = cmd
     pap_path = os.getenv('S1ARD_PAP_PATH', None)
     if pap_cmd is not None:
         logger.debug("S1ARD_PAP_PATH is defined: '{}'.".format(pap_path))
@@ -77,9 +75,11 @@ def preappend_cmd(cmd):
         rmt_path = pap_paths[1]
         logger.debug("Local Path to be replaced: '{}'.".format(lcl_path))
         logger.debug("Remote Path to be populated: '{}'.".format(rmt_path))
-        fnl_out_cmd = out_cmd.replace(lcl_path, rmt_path)
+        out_cmd = cmd.replace(lcl_path, rmt_path)
+    logger.debug("Command file paths updated: '{}'.".format(out_cmd))
 
-    logger.debug("Command outputted: '{}'.".format(fnl_out_cmd))
+    fnl_out_cmd = "{} {}".format(pap_cmd, out_cmd)
+    logger.debug("Pre-appended command outputted: '{}'.".format(fnl_out_cmd))
     return fnl_out_cmd
 
 
@@ -536,8 +536,8 @@ def convert_to_dB(input_img, output_img, gdal_format):
     n_bands = img_ds.RasterCount
 
     co = []
-    if gdal_format == "GTIFF":
-        co = ["-co TILED=YES", "-co COMPRESS=LZW", "-co BIGTIFF=IF_NEEDED"]
+    if gdal_format == 'GTIFF':
+        co = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=IF_NEEDED"]
 
     out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32,
                                                           options=co)
