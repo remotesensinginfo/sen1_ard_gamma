@@ -336,7 +336,28 @@ def retrieve_sentinel1_metadata(input_safe_file):
                     "{http://www.esa.int/safe/sentinel-1.0}acquisitionPeriod")
                 scn_metadata_info['start_time'] = acq_period_tag.find("{http://www.esa.int/safe/sentinel-1.0}startTime").text.strip()
                 scn_metadata_info['stop_time'] = acq_period_tag.find("{http://www.esa.int/safe/sentinel-1.0}stopTime").text.strip()
+            elif metadata_obj_tag.attrib['ID'] == 'measurementFrameSet':
+                foot_print_tag = metadata_obj_tag.find("metadataWrap").find("xmlData").find(
+                    "{http://www.esa.int/safe/sentinel-1.0}frameSet").find(
+                    "{http://www.esa.int/safe/sentinel-1.0}frame").find(
+                    "{http://www.esa.int/safe/sentinel-1.0}footPrint")
+                coords_tag = foot_print_tag.find("{http://www.opengis.net/gml}coordinates")
+                coords_str = coords_tag.text.strip()
+                coords_str_arr = coords_str.split(" ")
 
+                scn_metadata_info['footprint'] = []
+                lat_pt_sum = 0.0
+                lon_pt_sum = 0.0
+                n = 0.0
+                for coord in coords_str_arr:
+                    pt_coords = coord.split(",")
+                    lat_pt = float(pt_coords[0])
+                    lon_pt = float(pt_coords[1])
+                    scn_metadata_info['footprint'].append([lat_pt, lon_pt])
+                    lat_pt_sum += lat_pt
+                    lon_pt_sum += lon_pt
+                    n += 1.0
+                scn_metadata_info['centre_pt'] = [(lat_pt_sum/n), (lon_pt_sum/n)]
     return scn_metadata_info
 
 
@@ -352,15 +373,29 @@ def create_sentinel1_basename(scn_metadata_info):
 
     start_time_obj = datetime.datetime.strptime(scn_metadata_info['start_time'], "%Y-%m-%dT%H:%M:%S.%f")
     date_str = start_time_obj.strftime("%Y%m%d")
+    base_name = base_name + '_' + date_str
 
-    base_name = base_name + '_' + date_str + '_' + scn_metadata_info['mode'].lower()
+    lat_pt = scn_metadata_info['centre_pt'][0]
+    lon_pt = scn_metadata_info['centre_pt'][1]
+    east_west = 'e'
+    if lon_pt < 0:
+        east_west = 'w'
+    north_south = 'n'
+    if lat_pt < 0:
+        north_south = 's'
+    pos = "lat" + north_south + str(round(lat_pt, 1)).replace('.', '').replace('-', '') + "lon" + east_west + str(
+        round(lon_pt, 1)).replace('.', '').replace('-', '')
+
+    base_name = base_name + '_' + pos
+
+    base_name = base_name + '_' + scn_metadata_info['mode'].lower()
     if scn_metadata_info['pass'].upper() == 'ASCENDING':
         base_name = base_name + '_asc'
     else:
         base_name = base_name + '_dsc'
 
     base_name = base_name + '_orb' + scn_metadata_info['orbit_number'] + '_cyc' + scn_metadata_info[
-        'cycle_number'] + '_mdt' + scn_metadata_info['mission_data_take_id']
+        'cycle_number'] + '_slc' + scn_metadata_info['slice_number']
 
     return base_name
 

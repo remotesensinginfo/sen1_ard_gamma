@@ -734,7 +734,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
     scn_safe_files = sen1_ard_gamma.sen1_ard_utils.find_sen1_ard_files(input_safe_file)
 
     scn_basename = sen1_ard_gamma.sen1_ard_utils.create_sentinel1_basename(scn_metadata_info)
-    print("Basename for scene: {}".format(scn_basename))
+    logger.info("Basename for scene: {}".format(scn_basename))
 
     if polarisations is None:
         polarisations = scn_metadata_info['product_polarisations']
