@@ -54,21 +54,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     rsgis_utils = rsgislib.RSGISPyUtils()
-
     if args.genbatchcmds:
         input_img_files = glob.glob(args.input)
+        print("{} input files.".format(len(input_img_files)))
         out_file_ext = rsgis_utils.getFileExtension(args.format)
         cmds = []
         for img in input_img_files:
-            print(img)
             img_basename = os.path.splitext(os.path.basename(img))[0]
             out_img = os.path.join(args.output, "{}{}".format(img_basename, out_file_ext))
             cmd = "prep_dem_gamma.py -i {0} -o {1} -f {2}".format(img, out_img, args.format)
             cmds.append(cmd)
         rsgis_utils.writeList2File(cmds, args.outfile)
+        print("Complete.")
     else:
         no_data_val = rsgis_utils.getImageNoDataValue(args.input, 1)
-
         exp = "(b1==0)||(b1=={})?1:b1".format(no_data_val)
         rsgislib.imagecalc.imageMath(args.input, args.output, exp, args.format, rsgislib.TYPE_16INT)
         rsgislib.imageutils.popImageStats(args.output, usenodataval=True, nodataval=0, calcpyramids=True)
