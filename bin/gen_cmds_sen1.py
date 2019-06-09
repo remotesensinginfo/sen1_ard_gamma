@@ -52,7 +52,9 @@ if __name__ == "__main__":
     parser.add_argument("--outfile", type=str, default="cmds_dem_lst.sh", help="Output file which contains the list of "
                                                                                "commands.")
     parser.add_argument("--cmd", type=str, default="SEN1_GRD_ARD", choices=["SEN1_GRD_ARD"],
-                        help='''Specify the tool for which commands are to be generated.''')
+                        help="Specify the tool for which commands are to be generated.")
+    parser.add_argument("--zip", action='store_true', default=False, help="Specifies that the input SAFE file is a "
+                                                                          "zip file and needs extracting.")
     args = parser.parse_args()
 
     if args.cmd == "SEN1_GRD_ARD":
@@ -60,12 +62,24 @@ if __name__ == "__main__":
         print("{} input files.".format(len(input_img_files)))
         out_file_ext = sen1_ard_gamma.sen1_ard_utils.getFileExtension(args.format)
         cmds = []
+        out_cmd = True
         for img in input_img_files:
+            out_cmd = True
+            if args.zip:
+                if os.path.isfile(img):
+                    out_cmd = True
+                else:
+                    out_cmd = False
+
             cmd = "python sen1_grd_ard.py -i {0} -o {1} -t {2} -d {3} -f {4} -r {5} ".format(img, args.output,
                                                                                              args.tmpdir, args.dem,
                                                                                              args.format,
                                                                                              args.resolution)
-            cmds.append(cmd)
+            if args.zip:
+                cmd = cmd + " --zip "
+            if out_cmd:
+                cmds.append(cmd)
+
         sen1_ard_gamma.sen1_ard_utils.write_list_to_file(cmds, args.outfile)
         print("Complete.")
     else:

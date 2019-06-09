@@ -35,9 +35,13 @@ import sys
 sys.path.append("..")
 
 import argparse
+import os
+import os.path
+import subprocess
 
 import sen1_ard_gamma
 import sen1_ard_gamma.sen1_grd_ard_tools
+import sen1_ard_gamma.sen1_ard_utils
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -61,9 +65,34 @@ if __name__ == "__main__":
     parser.add_argument("--nodemcheck", action='store_true', default=False,
                         help="Specifies that the DEM should not be checked to ensure the minimum value is 1 with a "
                              " no data value of 0 (zero) which is used by Gamma.")
+    parser.add_argument("--zip", action='store_true', default=False, help="Specifies that the input SAFE file is a "
+                                                                          "zip file and needs extracting.")
 
     args = parser.parse_args()
 
-    sen1_ard_gamma.sen1_grd_ard_tools.run_sen1_grd_ard_analysis(args.input, args.output, args.tmpdir, args.dem,
+    unzip_tmp_dir_created = False
+    unzip_dir = ""
+    if args.zip:
+        uid_val = sen1_ard_gamma.sen1_ard_utils.uidGenerator()
+        base_file_name = os.path.splitext(os.path.basename(args.input))[0]
+        unzip_dir = os.path.join(args.tmpdir, "{}_{}".format(base_file_name, uid_val))
+        if not os.path.exists(unzip_dir):
+            os.makedirs(unzip_dir)
+            unzip_tmp_dir_created = True
+        cwd = os.getcwd()
+        os.chdir(unzip_dir)
+        print(args.input)
+        cmd = "unzip {}".format(args.input)
+        subprocess.call(cmd, shell=True)
+        input_safe = os.path.join(unzip_dir, "{}.SAFE".format(base_file_name))
+        os.chdir(cwd)
+    else:
+        input_safe = args.input
+
+    # Run analysis
+    sen1_ard_gamma.sen1_grd_ard_tools.run_sen1_grd_ard_analysis(input_safe, args.output, args.tmpdir, args.dem,
                                                                 args.resolution, args.projepsg, args.pol, args.format,
                                                                 args.nostats, args.keepfiles, args.nodemcheck)
+    if args.zip and unzip_tmp_dir_created:
+        import shutil
+        shutil.rmtree(unzip_dir)
