@@ -63,7 +63,7 @@ if __name__ == "__main__":
     if args.cmd == "SEN1_GRD_ARD":
         input_img_files = glob.glob(args.input)
         print("{} input files.".format(len(input_img_files)))
-        out_file_ext = sen1_ard_gamma.sen1_ard_utils.getFileExtension(args.format)
+        out_file_ext = sen1_ard_gamma.sen1_ard_utils.get_file_extension(args.format)
         cmds = []
         out_cmd = True
         for img in input_img_files:
