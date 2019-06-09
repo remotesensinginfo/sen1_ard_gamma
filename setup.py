@@ -34,7 +34,7 @@ from distutils.core import setup
 import os
 
 setup(name='sen1_ard_gamma',
-    version='0.1.5',
+    version='0.1.6',
     description='Software for processing ESA Sentinel-1 data to generate ARD products',
     author='Pete Bunting',
     author_email='pfb@aber.ac.uk',
