@@ -615,19 +615,19 @@ def convert_to_dB(input_img, output_img, gdal_format):
     out_img_ds = None
 
 
-    def write_list_to_file(data_lst, out_file):
-        """
-        Write a list a text file, one line per item.
+def write_list_to_file(data_lst, out_file):
+    """
+    Write a list a text file, one line per item.
 
-        :param dataList: List of items to be written
-        :param outFile:
+    :param dataList: List of items to be written
+    :param outFile:
 
-        """
-        logger.debug("Creating output file: {}".format(out_file))
-        f = open(out_file, 'w')
-        logger.debug("Created output file: {}".format(out_file))
-        for item in data_lst:
-            f.write(str(item) + '\n')
-        f.flush()
-        f.close()
-        logger.debug("Finished writing and close output file: {}".format(out_file))
+    """
+    logger.debug("Creating output file: {}".format(out_file))
+    f = open(out_file, 'w')
+    logger.debug("Created output file: {}".format(out_file))
+    for item in data_lst:
+        f.write(str(item) + '\n')
+    f.flush()
+    f.close()
+    logger.debug("Finished writing and close output file: {}".format(out_file))
