@@ -31,6 +31,9 @@ sen1_ard_gamma - tools for Sentinel-1 GRD processing using Gamma
 # History:
 # Version 1.0 - Created.
 
+import sys
+sys.path.append("..")
+
 import argparse
 import glob
 import os.path
