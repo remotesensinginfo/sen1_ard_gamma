@@ -61,7 +61,7 @@ if __name__ == "__main__":
     parser.add_argument("--nostats", action='store_true', default=False,
                         help="Specifies that the image statistics and pyramids should be build for all output images.")
     parser.add_argument("--keepfiles", action='store_true', default=False,
-                        help="Specifies intermediate files within the --tmpdir should be kept (normally for debugging).")
+                        help="Specifies intermediate files within the --tmpdir should be kept (i.e., for debugging).")
     parser.add_argument("--nodemcheck", action='store_true', default=False,
                         help="Specifies that the DEM should not be checked to ensure the minimum value is 1 with a "
                              " no data value of 0 (zero) which is used by Gamma.")

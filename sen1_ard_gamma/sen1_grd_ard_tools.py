@@ -713,7 +713,7 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
 
 
 def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file, out_img_res, out_proj_epsg,
-                              polarisations, gdal_format, calc_no_stats, keep_files, no_dem_check):
+                              polarisations, gdal_format, calc_no_stats, keep_files, no_dem_check=False):
     """
     High level function which runs the analysis of a Sentinel-1 GRD scene to an ARD product.
 
@@ -769,10 +769,11 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
                                                                        scn_safe_files['annotation_' + pol_lower],
                                                                        scn_safe_files['calibration_' + pol_lower],
                                                                        scn_safe_files['noise_' + pol_lower],
-                                                                       dem_img_file, demparfile, c_scn_basename, c_out_dir,
-                                                                       c_tmp_dir, out_img_res, -out_img_res,
+                                                                       dem_img_file, demparfile, c_scn_basename,
+                                                                       c_out_dir, c_tmp_dir, out_img_res, -out_img_res,
                                                                        out_proj_epsg, use_dem_file=(not first),
-                                                                       check_in_dem_filename=True, no_dem_check=False,
+                                                                       check_in_dem_filename=True,
+                                                                       no_dem_check=no_dem_check,
                                                                        dem_resample_method=gdal.GRA_CubicSpline)
 
         out_scns[pol_lower] = dict()
