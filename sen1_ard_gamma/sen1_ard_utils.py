@@ -169,14 +169,21 @@ def reproj_point(in_proj_osr_obj, out_proj_osr_obj, x, y):
     :param out_proj_osr_obj: osgeo.osr.SpatialReference representation of projection of output point
     :param x: x coordinate value (float)
     :param y: y coordinate value (float)
-    :return: x, y. (note if returning long, lat you might need to invert)
+    :return: x, y
     """
-    wktPt = 'POINT(%s %s)' % (x, y)
+    if in_proj_osr_obj.EPSGTreatsAsLatLong():
+        wktPt = 'POINT(%s %s)' % (y, x)
+    else:
+        wktPt = 'POINT(%s %s)' % (x, y)
     point = ogr.CreateGeometryFromWkt(wktPt)
     point.AssignSpatialReference(in_proj_osr_obj)
     point.TransformTo(out_proj_osr_obj)
-    outX = point.GetX()
-    outY = point.GetY()
+    if out_proj_osr_obj.EPSGTreatsAsLatLong():
+        outX = point.GetY()
+        outY = point.GetX()
+    else:
+        outX = point.GetX()
+        outY = point.GetY()
     return outX, outY
 
 
