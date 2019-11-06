@@ -620,7 +620,7 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
     scn_keys = list(out_scns_dict.keys())
     gdal_opts = ""
     if gdal_format == 'GTIFF':
-        gdal_opts = "-co TILED=YES -co COMPRESS=LZW -co BIGTIFF=IF_NEEDED "
+        gdal_opts = "-co TILED=YES -co COMPRESS=LZW -co BIGTIFF=YES "
     if len(scn_keys) == 2:
         if ('vv' in scn_keys) and ('vh' in scn_keys):
             # ------------ Process inc Product ------------- #

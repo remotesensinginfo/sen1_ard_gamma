@@ -544,7 +544,12 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     ratio_img_arr[numpy.isnan(ratio_img_arr)] = 0.0
     ratio_img_arr[numpy.isinf(ratio_img_arr)] = 0.0
 
-    out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, vv_x_pxls, vv_y_pxls, 1, gdal.GDT_Float32)
+    co = []
+    if gdal_format == 'GTIFF':
+        co = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+
+    out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, vv_x_pxls, vv_y_pxls, 1, gdal.GDT_Float32,
+                                                                  options=co)
     if out_ratios_file_ds == None:
         raise Exception('Could not create ratio image output raster: \'' + out_img + '\'')
     out_ratios_file_ds.SetGeoTransform(vv_geotransform)
@@ -579,7 +584,7 @@ def convert_to_dB(input_img, output_img, gdal_format):
 
     co = []
     if gdal_format == 'GTIFF':
-        co = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=IF_NEEDED"]
+        co = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
 
     out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32,
                                                           options=co)
