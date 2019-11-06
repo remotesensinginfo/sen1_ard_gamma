@@ -42,6 +42,9 @@ import numpy
 import osgeo.ogr as ogr
 import osgeo.gdal as gdal
 
+from rios import applier
+from rios import cuiprogress
+
 logger = logging.getLogger(__name__)
 
 gdal.UseExceptions()
@@ -562,69 +565,103 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     logger.debug("Created ratio output image file: {}".format(out_img))
 
 
-def convert_to_dB(input_img, output_img, gdal_format):
+def convert_to_dB(input_img, output_img, gdal_format, out_int_imgs=False):
     """
     Convert power image to decibels (dB) by applying 10 x log10(pwr)
 
     :param input_img: Input power image
     :param output_img: Output dB image
     :param gdal_format: GDAL image format for output image
+    :param out_int_imgs: if False then output image is Float32 if True then Int16 with gain of 100
 
     """
-    img_ds = gdal.Open(input_img)
-    if img_ds is None:
-        raise Exception("Could not open image: {}".format(input_img))
 
-    # Get Header information.
-    geotransform = img_ds.GetGeoTransform()
-    x_pxls = img_ds.RasterXSize
-    y_pxls = img_ds.RasterYSize
-    proj_str = img_ds.GetProjection()
-    n_bands = img_ds.RasterCount
+    def _apply_calc_dB(info, inputs, outputs, otherargs):
+        # Internal Function...
+        msk_arr = numpy.where(((inputs.image > 0.0) & numpy.isfinite(inputs.image)), 1, 0)
+        msk_arr = numpy.amin(msk_arr, axis=0)
 
-    co = []
-    if gdal_format == 'GTIFF':
-        co = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+        dB_flt_img_arr = numpy.where(msk_arr == 1, 10 * numpy.log10(inputs.image), 999)
+        dB_flt_img_arr[numpy.isnan(dB_flt_img_arr)] = 999
+        dB_flt_img_arr[numpy.isinf(dB_flt_img_arr)] = 999
 
-    out_img_ds = gdal.GetDriverByName(gdal_format).Create(output_img, x_pxls, y_pxls, n_bands, gdal.GDT_Float32,
-                                                          options=co)
-    if out_img_ds == None:
-        raise Exception("Could not create dB image output raster: '{}'.".format(output_img))
-    out_img_ds.SetGeoTransform(geotransform)
-    out_img_ds.SetProjection(proj_str)
+        msk_arr = numpy.where((dB_flt_img_arr > -60) & (dB_flt_img_arr < 20), 1, 0)
+        msk_arr = numpy.amin(msk_arr, axis=0)
+        numpy.where(msk_arr == 1, dB_flt_img_arr, 999)
 
-    for band in range(n_bands):
-        band = band + 1
-        img_band = img_ds.GetRasterBand(band)
-        if img_band is None:
-            raise Exception("Could not open image band {} from {}".format(band, input_img))
-        val_arr = img_band.ReadAsArray()
-
-        if band == 1:
-            msk_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr)), 1, 0)
+        if otherargs.out_int_imgs:
+            out_img_arr = numpy.zeros_like(inputs.image, dtype=numpy.int16)
+            out_img_arr[...] = numpy.around((dB_flt_img_arr * 100), 0)
+            out_img_arr[dB_flt_img_arr == 999] = 32767
         else:
-            msk_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr) & (msk_arr == 1)), 1, 0)
+            out_img_arr = dB_flt_img_arr
 
-    for band in range(n_bands):
-        band = band + 1
-        img_band = img_ds.GetRasterBand(band)
-        if img_band is None:
-            raise Exception("Could not open image band {} from {}".format(band, input_img))
-        val_arr = img_band.ReadAsArray()
+        outputs.outimage = out_img_arr
 
-        dB_img_arr = numpy.where(((val_arr > 0.0) & numpy.isfinite(val_arr) & (msk_arr == 1)),
-                                 10 * numpy.log10(val_arr), 999)
-        dB_img_arr[numpy.isnan(dB_img_arr)] = 999
-        dB_img_arr[numpy.isinf(dB_img_arr)] = 999
+    infiles = applier.FilenameAssociations()
+    infiles.image = input_img
 
-        out_img_band = out_img_ds.GetRasterBand(band)
-        if out_img_band == None:
-            raise Exception("Could not open image band {} from {}".format(band, output_img))
-        out_img_band.SetNoDataValue(999)
-        out_img_band.WriteArray(dB_img_arr)
+    outfiles = applier.FilenameAssociations()
+    outfiles.outimage = output_img
 
-    img_ds = None
-    out_img_ds = None
+    otherargs = applier.OtherInputs()
+    otherargs.out_int_imgs = out_int_imgs
+
+    aControls = applier.ApplierControls()
+    aControls.progress = cuiprogress.CUIProgressBar()
+    aControls.drivername = gdal_format
+    aControls.omitPyramids = True
+    aControls.calcStats = False
+    if gdal_format == 'GTIFF':
+        aControls.creationoptions = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+
+    applier.apply(_apply_calc_dB, infiles, outfiles, otherargs, controls=aControls)
+    print("Completed")
+
+
+def apply_gain_to_img(input_img, output_img, gdal_format, gain, np_dtype, in_no_data, out_no_data):
+    """
+    Apply a gain scale factor to an input image and save as an integer dataset.
+
+    :param input_img: Input image file
+    :param output_img: Output image file
+    :param gdal_format: GDAL image format for output image
+    :param gain: scale factor to be applied to the input image
+    :param np_dtype: the numpy datatype for the output data (e.g., numpy.int16 or numpy.uint16)
+    :param in_no_data: the input image no data value
+    :param out_no_data: the no data value to be used for the output image
+
+    """
+
+    def _apply_img_gain(info, inputs, outputs, otherargs):
+        # Internal Function...
+        out_img_arr = numpy.zeros_like(inputs.image, dtype=otherargs.np_dtype)
+        out_img_arr[...] = numpy.around((inputs.image * otherargs.gain), 0)
+        out_img_arr[inputs.image == otherargs.in_no_data] = otherargs.out_no_data
+        outputs.outimage = out_img_arr
+
+    infiles = applier.FilenameAssociations()
+    infiles.image = input_img
+
+    outfiles = applier.FilenameAssociations()
+    outfiles.outimage = output_img
+
+    otherargs = applier.OtherInputs()
+    otherargs.gain = gain
+    otherargs.np_dtype = np_dtype
+    otherargs.in_no_data = in_no_data
+    otherargs.out_no_data = out_no_data
+
+    aControls = applier.ApplierControls()
+    aControls.progress = cuiprogress.CUIProgressBar()
+    aControls.drivername = gdal_format
+    aControls.omitPyramids = True
+    aControls.calcStats = False
+    if gdal_format == 'GTIFF':
+        aControls.creationoptions = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+
+    applier.apply(_apply_img_gain, infiles, outfiles, otherargs, controls=aControls)
+    print("Completed")
 
 
 def write_list_to_file(data_lst, out_file):

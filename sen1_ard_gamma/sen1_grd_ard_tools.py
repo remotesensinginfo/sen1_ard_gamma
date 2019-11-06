@@ -40,6 +40,8 @@ import math
 
 import subprocess
 
+import numpy
+
 import osgeo.gdal as gdal
 
 import sen1_ard_gamma.sen1_ard_utils
@@ -603,7 +605,7 @@ def exe_gamma_grd_ard_processing(sen1img, ann_sen1_xml, cal_sen1_xml, nos_sen1_x
     logger.info("Completed processing of {}.".format(sen1img))
 
 
-def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, gdal_format='GTIFF'):
+def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, gdal_format='GTIFF', out_int_imgs=False):
     """
     A function to create the final stacked ARD image products.
 
@@ -621,18 +623,24 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
     gdal_opts = ""
     if gdal_format == 'GTIFF':
         gdal_opts = "-co TILED=YES -co COMPRESS=LZW -co BIGTIFF=YES "
+    dB_pwr_img = ""
     if len(scn_keys) == 2:
         if ('vv' in scn_keys) and ('vh' in scn_keys):
             # ------------ Process inc Product ------------- #
             out_img = os.path.join(out_dir, "{}_inc{}".format(out_base_name, img_ext))
-            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict['vv']['inc'],
-                                                              out_img)
-            try:
-                logger.debug("Running following command using subprocess '{}'".format(cmd))
-                subprocess.call(cmd, shell=True)
-            except OSError as e:
-                logger.error('Cmd Failed: {}'.format(cmd))
-                raise e
+            if out_int_imgs:
+                # Multiply by Gain.
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_scns_dict['vv']['inc'], out_img, gdal_format,
+                                                                10000, numpy.uint16, 0, 0)
+            else:
+                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict['vv']['inc'],
+                                                                  out_img)
+                try:
+                    logger.debug("Running following command using subprocess '{}'".format(cmd))
+                    subprocess.call(cmd, shell=True)
+                except OSError as e:
+                    logger.error('Cmd Failed: {}'.format(cmd))
+                    raise e
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['inc'])
             out_img_list['inc'] = out_img
             # ------------ Processed inc Product ------------- #
@@ -648,13 +656,18 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
                 logger.error('Cmd Failed: {}'.format(cmd))
                 raise e
             out_img = os.path.join(out_dir, "{}_pix{}".format(out_base_name, img_ext))
-            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
-            try:
-                logger.debug("Running following command using subprocess '{}'".format(cmd))
-                subprocess.call(cmd, shell=True)
-            except OSError as e:
-                logger.error('Cmd Failed: {}'.format(cmd))
-                raise e
+            if out_int_imgs:
+                # Multiply by Gain.
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_vrt_tmp, out_img, gdal_format,
+                                                                10000, numpy.uint16, 0, 0)
+            else:
+                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
+                try:
+                    logger.debug("Running following command using subprocess '{}'".format(cmd))
+                    subprocess.call(cmd, shell=True)
+                except OSError as e:
+                    logger.error('Cmd Failed: {}'.format(cmd))
+                    raise e
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh'])
             out_img_list['pix'] = out_img
             # ------------ Processed pix Product ------------- #
@@ -674,13 +687,20 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
                 logger.error('Cmd Failed: {}'.format(cmd))
                 raise e
             out_img = os.path.join(out_dir, "{}_pwr{}".format(out_base_name, img_ext))
-            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
-            try:
-                logger.debug("Running following command using subprocess '{}'".format(cmd))
-                subprocess.call(cmd, shell=True)
-            except OSError as e:
-                logger.error('Cmd Failed: {}'.format(cmd))
-                raise e
+            if out_int_imgs:
+                # Multiple by Gain
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_vrt_tmp, out_img, gdal_format,
+                                                                100000, numpy.uint32, 0, 0)
+                dB_pwr_img = out_vrt_tmp
+            else:
+                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
+                try:
+                    logger.debug("Running following command using subprocess '{}'".format(cmd))
+                    subprocess.call(cmd, shell=True)
+                except OSError as e:
+                    logger.error('Cmd Failed: {}'.format(cmd))
+                    raise e
+                dB_pwr_img = out_img
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh', 'vv/vh'])
             out_img_list['pwr'] = out_img
             # ------------ Processed pwr Product ------------- #
@@ -690,30 +710,42 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
         pol = scn_keys[0]
         for prod in ['inc', 'pix', 'pwr']:
             out_img = os.path.join(out_dir, "{}_{}{}".format(out_base_name, prod, img_ext))
-            cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict[pol][prod], out_img)
-            try:
-                logger.debug("Running following command using subprocess '{}'".format(cmd))
-                subprocess.call(cmd, shell=True)
-            except OSError as e:
-                logger.error('Cmd Failed: {}'.format(cmd))
-                raise e
+            if out_int_imgs:
+                # Multiple by Gain
+                gain_val = 10000
+                np_dtype = numpy.uint16
+                if (prod == 'pwr'):
+                    gain_val = 100000
+                    np_dtype = numpy.uint32
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_scns_dict[pol][prod], out_img, gdal_format,
+                                                                gain_val, np_dtype, 0, 0)
+            else:
+                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict[pol][prod], out_img)
+                try:
+                    logger.debug("Running following command using subprocess '{}'".format(cmd))
+                    subprocess.call(cmd, shell=True)
+                except OSError as e:
+                    logger.error('Cmd Failed: {}'.format(cmd))
+                    raise e
             if prod in ['inc', 'lsmap']:
                 sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, [prod])
             else:
                 sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, [pol])
             out_img_list[prod] = out_img
+        dB_pwr_img = out_scns_dict[pol]['pwr']
     else:
         raise Exception("Only know how to stack images with 2 bands or copy single band images.")
     if 'pwr' in out_img_list:
         logger.debug("Calculate dB image from power.")
         out_dB_img = os.path.join(out_dir, "{}_dB{}".format(out_base_name, img_ext))
-        sen1_ard_gamma.sen1_ard_utils.convert_to_dB(out_img_list['pwr'], out_dB_img, gdal_format)
+        sen1_ard_gamma.sen1_ard_utils.convert_to_dB(dB_pwr_img, out_dB_img, gdal_format, out_int_imgs)
         out_img_list['dB'] = out_dB_img
     return out_img_list
 
 
 def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file, out_img_res, out_proj_epsg,
-                              polarisations, gdal_format, calc_no_stats, keep_files, no_dem_check=False):
+                              polarisations, gdal_format, calc_no_stats, keep_files, no_dem_check=False,
+                              out_int_imgs=False):
     """
     High level function which runs the analysis of a Sentinel-1 GRD scene to an ARD product.
 
@@ -728,6 +760,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
     :param calc_no_stats:
     :param keep_files:
     :param no_dem_check: If True the DEM is not checked for no data value and minimum value for Gamma compatibility
+    :param out_int_imgs: Produce intergised output images with gains applied.
     """
     scn_metadata_info = sen1_ard_gamma.sen1_ard_utils.retrieve_sentinel1_metadata(input_safe_file)
 
@@ -793,7 +826,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
     logger.info("Creating final image outputs")
     # Create final output images with bands stacked where appropriate and ratio image (vv/vh) calculated.
     fnl_out_imgs = sen1_ard_gamma.sen1_grd_ard_tools.create_pol_stacked_products(out_scns, scn_basename, c_out_dir,
-                                                                                 output_dir, gdal_format)
+                                                                                 output_dir, gdal_format, out_int_imgs)
 
     if not calc_no_stats:
         logger.info("Calculating image statistics and pyramids for final outputs")

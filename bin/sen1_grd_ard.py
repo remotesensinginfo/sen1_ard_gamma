@@ -67,6 +67,8 @@ if __name__ == "__main__":
                              " no data value of 0 (zero) which is used by Gamma.")
     parser.add_argument("--zip", action='store_true', default=False, help="Specifies that the input SAFE file is a "
                                                                           "zip file and needs extracting.")
+    parser.add_argument("--intimgs", action='store_true', default=False,
+                        help="Specifies that the output images should have a gain (x1000) applied and integerised.")
 
     args = parser.parse_args()
 
@@ -92,7 +94,8 @@ if __name__ == "__main__":
     # Run analysis
     sen1_ard_gamma.sen1_grd_ard_tools.run_sen1_grd_ard_analysis(input_safe, args.output, args.tmpdir, args.dem,
                                                                 args.resolution, args.projepsg, args.pol, args.format,
-                                                                args.nostats, args.keepfiles, args.nodemcheck)
+                                                                args.nostats, args.keepfiles, args.nodemcheck,
+                                                                args.intimgs)
     if args.zip and unzip_tmp_dir_created:
         import shutil
         shutil.rmtree(unzip_dir)

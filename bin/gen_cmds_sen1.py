@@ -58,6 +58,8 @@ if __name__ == "__main__":
                         help="Specify the tool for which commands are to be generated.")
     parser.add_argument("--zip", action='store_true', default=False, help="Specifies that the input SAFE file is a "
                                                                           "zip file and needs extracting.")
+    parser.add_argument("--intimgs", action='store_true', default=False,
+                        help="Specifies that the output images should have a gain (x1000) applied and integerised.")
     args = parser.parse_args()
 
     if args.cmd == "SEN1_GRD_ARD":
@@ -80,6 +82,8 @@ if __name__ == "__main__":
                                                                                              args.resolution)
             if args.zip:
                 cmd = cmd + " --zip "
+            if args.intimgs:
+                cmd = cmd + " --intimgs "
             if out_cmd:
                 cmds.append(cmd)
 
