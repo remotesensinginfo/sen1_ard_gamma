@@ -47,6 +47,7 @@ import osgeo.gdal as gdal
 import sen1_ard_gamma.sen1_ard_utils
 import sen1_ard_gamma.gamma_dem_prep
 import sen1_ard_gamma.calc_img_stats
+from sen1_ard_gamma import GTIFF_CREATION_OPTS
 
 import logging
 logger = logging.getLogger(__name__)
@@ -620,9 +621,7 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
     out_img_list = dict()
     img_ext = sen1_ard_gamma.sen1_ard_utils.get_file_extension(gdal_format)
     scn_keys = list(out_scns_dict.keys())
-    gdal_opts = ""
-    if gdal_format == 'GTIFF':
-        gdal_opts = "-co TILED=YES -co COMPRESS=LZW -co BIGTIFF=YES "
+
     dB_pwr_img = ""
     if len(scn_keys) == 2:
         if ('vv' in scn_keys) and ('vh' in scn_keys):
@@ -633,41 +632,27 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
                 sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_scns_dict['vv']['inc'], out_img, gdal_format,
                                                                 10000, numpy.uint16, 0, 0)
             else:
-                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict['vv']['inc'],
-                                                                  out_img)
-                try:
-                    logger.debug("Running following command using subprocess '{}'".format(cmd))
-                    subprocess.call(cmd, shell=True)
-                except OSError as e:
-                    logger.error('Cmd Failed: {}'.format(cmd))
-                    raise e
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_scns_dict['vv']['inc'],  out_img, gdal_format)
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['inc'])
             out_img_list['inc'] = out_img
             # ------------ Processed inc Product ------------- #
 
             # ------------ Process pix Product ------------- #
+            # Create tmp VRT stacked image
             out_vrt_tmp = os.path.join(tmp_dir, "{}_pix_tmp.vrt".format(out_base_name))
-            cmd = "gdalbuildvrt -separate {} {} {}".format(out_vrt_tmp, out_scns_dict['vv']['pix'],
-                                                           out_scns_dict['vh']['pix'])
-            try:
-                logger.debug("Running following command using subprocess '{}'".format(cmd))
-                subprocess.call(cmd, shell=True)
-            except OSError as e:
-                logger.error('Cmd Failed: {}'.format(cmd))
-                raise e
+            pix_imgs = [out_scns_dict['vv']['pix'], out_scns_dict['vh']['pix']]
+            sen1_ard_gamma.sen1_ard_utils.gdal_stack_images_vrt(pix_imgs, out_vrt_tmp)
+
+            # Generate final output image
             out_img = os.path.join(out_dir, "{}_pix{}".format(out_base_name, img_ext))
             if out_int_imgs:
                 # Multiply by Gain.
                 sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_vrt_tmp, out_img, gdal_format,
                                                                 10000, numpy.uint16, 0, 0)
             else:
-                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
-                try:
-                    logger.debug("Running following command using subprocess '{}'".format(cmd))
-                    subprocess.call(cmd, shell=True)
-                except OSError as e:
-                    logger.error('Cmd Failed: {}'.format(cmd))
-                    raise e
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_vrt_tmp, out_img, gdal_format)
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh'])
             out_img_list['pix'] = out_img
             # ------------ Processed pix Product ------------- #
@@ -677,29 +662,21 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
             sen1_ard_gamma.sen1_ard_utils.calc_ratio_img(out_scns_dict['vv']['pwr'], out_scns_dict['vh']['pwr'],
                                                          out_ratio_tmp_file, gdal_format)
 
+            # Create tmp VRT stacked power image.
             out_vrt_tmp = os.path.join(tmp_dir, "{}_pwr_tmp.vrt".format(out_base_name))
-            cmd = "gdalbuildvrt -separate {} {} {} {}".format(out_vrt_tmp, out_scns_dict['vv']['pwr'],
-                                                              out_scns_dict['vh']['pwr'], out_ratio_tmp_file)
-            try:
-                logger.debug("Running following command using subprocess '{}'".format(cmd))
-                subprocess.call(cmd, shell=True)
-            except OSError as e:
-                logger.error('Cmd Failed: {}'.format(cmd))
-                raise e
+            pwr_imgs = [out_scns_dict['vv']['pwr'], out_scns_dict['vh']['pwr'], out_ratio_tmp_file]
+            sen1_ard_gamma.sen1_ard_utils.gdal_stack_images_vrt(pwr_imgs, out_vrt_tmp)
+
+            # Generate final output image
             out_img = os.path.join(out_dir, "{}_pwr{}".format(out_base_name, img_ext))
             if out_int_imgs:
-                # Multiple by Gain
+                # Multiply by Gain
                 sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_vrt_tmp, out_img, gdal_format,
                                                                 100000, numpy.uint32, 0, 0)
                 dB_pwr_img = out_vrt_tmp
             else:
-                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_vrt_tmp, out_img)
-                try:
-                    logger.debug("Running following command using subprocess '{}'".format(cmd))
-                    subprocess.call(cmd, shell=True)
-                except OSError as e:
-                    logger.error('Cmd Failed: {}'.format(cmd))
-                    raise e
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_vrt_tmp, out_img, gdal_format)
                 dB_pwr_img = out_img
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh', 'vv/vh'])
             out_img_list['pwr'] = out_img
@@ -711,7 +688,7 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
         for prod in ['inc', 'pix', 'pwr']:
             out_img = os.path.join(out_dir, "{}_{}{}".format(out_base_name, prod, img_ext))
             if out_int_imgs:
-                # Multiple by Gain
+                # Multiply by Gain
                 gain_val = 10000
                 np_dtype = numpy.uint16
                 if (prod == 'pwr'):
@@ -720,13 +697,8 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
                 sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_scns_dict[pol][prod], out_img, gdal_format,
                                                                 gain_val, np_dtype, 0, 0)
             else:
-                cmd = "gdal_translate -of {0} {1} {2} {3}".format(gdal_format, gdal_opts, out_scns_dict[pol][prod], out_img)
-                try:
-                    logger.debug("Running following command using subprocess '{}'".format(cmd))
-                    subprocess.call(cmd, shell=True)
-                except OSError as e:
-                    logger.error('Cmd Failed: {}'.format(cmd))
-                    raise e
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_scns_dict[pol][prod], out_img, gdal_format)
             if prod in ['inc', 'lsmap']:
                 sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, [prod])
             else:
@@ -837,7 +809,10 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
         if 'pwr' in fnl_out_imgs:
             sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['pwr'], no_data_val=0.0)
         if 'dB' in fnl_out_imgs:
-            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['dB'], no_data_val=999)
+            if out_int_imgs:
+                sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['dB'], no_data_val=32767)
+            else:
+                sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['dB'], no_data_val=999)
 
     if not keep_files:
         if c_tmp_dir_created:

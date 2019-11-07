@@ -29,12 +29,11 @@ $ python setup.py install
 # History:
 # Version 1.0 - Created.
 
-
 from distutils.core import setup
 import os
 
 setup(name='sen1_ard_gamma',
-    version='0.2.0',
+    version='0.2.1',
     description='Software for processing ESA Sentinel-1 data to generate ARD products',
     author='Pete Bunting',
     author_email='pfb@aber.ac.uk',

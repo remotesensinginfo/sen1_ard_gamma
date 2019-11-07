@@ -45,6 +45,8 @@ import osgeo.gdal as gdal
 from rios import applier
 from rios import cuiprogress
 
+from sen1_ard_gamma import GTIFF_CREATION_OPTS
+
 logger = logging.getLogger(__name__)
 
 gdal.UseExceptions()
@@ -549,7 +551,7 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
 
     co = []
     if gdal_format == 'GTIFF':
-        co = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+        co = GTIFF_CREATION_OPTS
 
     out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, vv_x_pxls, vv_y_pxls, 1, gdal.GDT_Float32,
                                                                   options=co)
@@ -613,7 +615,7 @@ def convert_to_dB(input_img, output_img, gdal_format, out_int_imgs=False):
     aControls.omitPyramids = True
     aControls.calcStats = False
     if gdal_format == 'GTIFF':
-        aControls.creationoptions = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+        aControls.creationoptions = GTIFF_CREATION_OPTS
 
     applier.apply(_apply_calc_dB, infiles, outfiles, otherargs, controls=aControls)
     print("Completed")
@@ -658,11 +660,39 @@ def apply_gain_to_img(input_img, output_img, gdal_format, gain, np_dtype, in_no_
     aControls.omitPyramids = True
     aControls.calcStats = False
     if gdal_format == 'GTIFF':
-        aControls.creationoptions = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
+        aControls.creationoptions = GTIFF_CREATION_OPTS
 
     applier.apply(_apply_img_gain, infiles, outfiles, otherargs, controls=aControls)
     print("Completed")
 
+
+def gdal_translate(input_img, output_img, gdal_format='GTIFF'):
+    """
+    Using GDAL translate to convert input image to a different format, if GTIFF selected
+    then a cloud optimised GeoTIFF will be outputted.
+
+    :param input_img: Input image which is GDAL readable.
+    :param output_img: The output image file.
+    :param gdal_format: The output image file format
+    """
+    options = ""
+    if gdal_format == 'GTIFF':
+        options = "-co TILED=YES -co INTERLEAVE=PIXEL -co BLOCKXSIZE=256 -co BLOCKYSIZE=256 -co COMPRESS=LZW -co BIGTIFF=YES -co COPY_SRC_OVERVIEWS=YES"
+    trans_opt = gdal.TranslateOptions(format=gdal_format, options=options)
+    gdal.Translate(output_img, input_img, options=trans_opt)
+
+
+def gdal_stack_images_vrt(input_imgs, output_vrt_file):
+    """
+    A function which creates a GDAL VRT file from a set of input images by stacking the input images
+    in a multi-band output file.
+
+    :param input_imgs: A list of input images
+    :param output_vrt_file: The output file location for the VRT.
+
+    """
+    build_vrt_opt = gdal.BuildVRTOptions(separate=True)
+    gdal.BuildVRT(output_vrt_file, input_imgs, options=build_vrt_opt)
 
 def write_list_to_file(data_lst, out_file):
     """
