@@ -712,6 +712,11 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
         out_dB_img = os.path.join(out_dir, "{}_dB{}".format(out_base_name, img_ext))
         sen1_ard_gamma.sen1_ard_utils.convert_to_dB(dB_pwr_img, out_dB_img, gdal_format, out_int_imgs)
         out_img_list['dB'] = out_dB_img
+
+        out_vmsk_img = os.path.join(out_dir, "{}_vmsk{}".format(out_base_name, img_ext))
+        sen1_ard_gamma.sen1_ard_utils.calc_valid_msk(dB_pwr_img, out_vmsk_img, gdal_format, 0.0)
+        out_img_list['vmsk'] = out_vmsk_img
+
     return out_img_list
 
 
@@ -802,6 +807,8 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
 
     if not calc_no_stats:
         logger.info("Calculating image statistics and pyramids for final outputs")
+        if 'vmsk' in fnl_out_imgs:
+            sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['vmsk'], no_data_val=0.0)
         if 'inc' in fnl_out_imgs:
             sen1_ard_gamma.calc_img_stats.run_calc_img_stats_pyramids(fnl_out_imgs['inc'], no_data_val=0.0)
         if 'pix' in fnl_out_imgs:

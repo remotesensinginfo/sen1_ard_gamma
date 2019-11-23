@@ -36,6 +36,7 @@ import os
 import os.path
 import glob
 import datetime
+import sys
 
 import numpy
 
@@ -50,6 +51,48 @@ from sen1_ard_gamma import GTIFF_CREATION_OPTS
 logger = logging.getLogger(__name__)
 
 gdal.UseExceptions()
+
+
+class TQDMProgressBar(object):
+    """
+    Uses TQDM TermProgress to print a progress bar to the terminal
+    """
+    def __init__(self):
+        self.lprogress = 0
+
+    def setTotalSteps(self,steps):
+        import tqdm
+        self.pbar = tqdm.tqdm(total=steps)
+        self.lprogress = 0
+
+    def setProgress(self, progress):
+        step = progress - self.lprogress
+        self.pbar.update(step)
+        self.lprogress = progress
+
+    def reset(self):
+        self.pbar.close()
+        import tqdm
+        self.pbar = tqdm.tqdm(total=100)
+        self.lprogress = 0
+
+    def setLabelText(self,text):
+        sys.stdout.write('\n%s\n' % text)
+
+    def wasCancelled(self):
+        return False
+
+    def displayException(self,trace):
+        sys.stdout.write(trace)
+
+    def displayWarning(self,text):
+        sys.stdout.write("Warning: %s\n" % text)
+
+    def displayError(self,text):
+        sys.stdout.write("Error: %s\n" % text)
+
+    def displayInfo(self,text):
+        sys.stdout.write("Info: %s\n" % text)
 
 
 def preappend_cmd(cmd):
@@ -503,67 +546,39 @@ def calc_ratio_img(vv_img, vh_img, out_img, gdal_format):
     :param gdal_format: Output image file format.
 
     """
-    vv_img_ds = gdal.Open(vv_img)
-    if vv_img_ds is None:
-        raise Exception("Could not open image: {}".format(vv_img))
-    vv_img_band = vv_img_ds.GetRasterBand(1)
-    if vv_img_band is None:
-        raise Exception("Could not open image band {}".format(vv_img))
-    vv_val_arr = vv_img_band.ReadAsArray()
-    # Get Header information.
-    vv_geotransform = vv_img_ds.GetGeoTransform()
-    vv_x_pxls = vv_img_ds.RasterXSize
-    vv_y_pxls = vv_img_ds.RasterYSize
-    vv_proj_str = vv_img_ds.GetProjection()
-    vv_img_ds = None
+    try:
+        import tqdm
+        progress_bar = TQDMProgressBar()
+    except:
+        progress_bar = cuiprogress.GDALProgressBar()
 
-    vh_img_ds = gdal.Open(vh_img)
-    if vh_img_ds is None:
-        raise Exception("Could not open image: {}".format(vh_img))
-    vh_img_band = vh_img_ds.GetRasterBand(1)
-    if vh_img_band is None:
-        raise Exception("Could not open image band {}".format(vh_img))
-    vh_val_arr = vh_img_band.ReadAsArray()
-    # Get Header information.
-    vh_geotransform = vh_img_ds.GetGeoTransform()
-    vh_x_pxls = vh_img_ds.RasterXSize
-    vh_y_pxls = vh_img_ds.RasterYSize
-    vh_img_ds = None
+    def _apply_calc_pol_ratio(info, inputs, outputs, otherargs):
+        # Internal Function...
+        ratio_img_arr = numpy.where(
+                (numpy.isfinite(inputs.vv_img) & (inputs.vv_img > 0.0) & numpy.isfinite(inputs.vh_img) &
+                 (inputs.vh_img > 0.0)), inputs.vv_img / inputs.vh_img, 0.0)
+        ratio_img_arr[numpy.isnan(ratio_img_arr)] = 0.0
+        ratio_img_arr[numpy.isinf(ratio_img_arr)] = 0.0
+        outputs.outimage = ratio_img_arr
 
-    if (vv_x_pxls != vh_x_pxls) and (vv_y_pxls != vh_y_pxls):
-        raise Exception("The VV and HV images have different numbers of pixels.")
+    infiles = applier.FilenameAssociations()
+    infiles.vv_img = vv_img
+    infiles.vh_img = vh_img
 
-    if (vv_geotransform[0] != vh_geotransform[0]) and (vv_geotransform[3] != vh_geotransform[3]):
-        raise Exception("The Top-Left corner coordinate is not the same for the VV and HV images.")
+    outfiles = applier.FilenameAssociations()
+    outfiles.outimage = out_img
 
-    if (vv_geotransform[1] != vh_geotransform[1]) and (vv_geotransform[5] != vh_geotransform[5]):
-        raise Exception("The image pixel resolution is not the same for the VV and HV images.")
+    otherargs = applier.OtherInputs()
 
-    if (vv_geotransform[2] != vh_geotransform[2]) and (vv_geotransform[4] != vh_geotransform[4]):
-        raise Exception("The image rotation is not the same for the VV and HV images.")
-
-    ratio_img_arr = numpy.where(
-        (numpy.isfinite(vv_val_arr) & (vv_val_arr > 0.0) & numpy.isfinite(vh_val_arr) & (vh_val_arr > 0.0)),
-        vv_val_arr / vh_val_arr, 0.0)
-
-    ratio_img_arr[numpy.isnan(ratio_img_arr)] = 0.0
-    ratio_img_arr[numpy.isinf(ratio_img_arr)] = 0.0
-
-    co = []
+    aControls = applier.ApplierControls()
+    aControls.progress = progress_bar
+    aControls.drivername = gdal_format
+    aControls.omitPyramids = True
+    aControls.calcStats = False
     if gdal_format == 'GTIFF':
-        co = GTIFF_CREATION_OPTS
+        aControls.creationoptions = GTIFF_CREATION_OPTS
 
-    out_ratios_file_ds = gdal.GetDriverByName(gdal_format).Create(out_img, vv_x_pxls, vv_y_pxls, 1, gdal.GDT_Float32,
-                                                                  options=co)
-    if out_ratios_file_ds == None:
-        raise Exception('Could not create ratio image output raster: \'' + out_img + '\'')
-    out_ratios_file_ds.SetGeoTransform(vv_geotransform)
-    out_ratios_file_ds.SetProjection(vv_proj_str)
-    out_ratio_band = out_ratios_file_ds.GetRasterBand(1)
-    if out_ratio_band == None:
-        raise Exception('Could not open ratio image band: \'' + out_img + '\'')
-    out_ratio_band.SetNoDataValue(0.0)
-    out_ratio_band.WriteArray(ratio_img_arr)
+    applier.apply(_apply_calc_pol_ratio, infiles, outfiles, otherargs, controls=aControls)
     logger.debug("Created ratio output image file: {}".format(out_img))
 
 
@@ -577,6 +592,11 @@ def convert_to_dB(input_img, output_img, gdal_format, out_int_imgs=False):
     :param out_int_imgs: if False then output image is Float32 if True then Int16 with gain of 100
 
     """
+    try:
+        import tqdm
+        progress_bar = TQDMProgressBar()
+    except:
+        progress_bar = cuiprogress.GDALProgressBar()
 
     def _apply_calc_dB(info, inputs, outputs, otherargs):
         # Internal Function...
@@ -610,7 +630,7 @@ def convert_to_dB(input_img, output_img, gdal_format, out_int_imgs=False):
     otherargs.out_int_imgs = out_int_imgs
 
     aControls = applier.ApplierControls()
-    aControls.progress = cuiprogress.CUIProgressBar()
+    aControls.progress = progress_bar
     aControls.drivername = gdal_format
     aControls.omitPyramids = True
     aControls.calcStats = False
@@ -618,7 +638,6 @@ def convert_to_dB(input_img, output_img, gdal_format, out_int_imgs=False):
         aControls.creationoptions = GTIFF_CREATION_OPTS
 
     applier.apply(_apply_calc_dB, infiles, outfiles, otherargs, controls=aControls)
-    print("Completed")
 
 
 def apply_gain_to_img(input_img, output_img, gdal_format, gain, np_dtype, in_no_data, out_no_data):
@@ -634,6 +653,11 @@ def apply_gain_to_img(input_img, output_img, gdal_format, gain, np_dtype, in_no_
     :param out_no_data: the no data value to be used for the output image
 
     """
+    try:
+        import tqdm
+        progress_bar = TQDMProgressBar()
+    except:
+        progress_bar = cuiprogress.GDALProgressBar()
 
     def _apply_img_gain(info, inputs, outputs, otherargs):
         # Internal Function...
@@ -655,7 +679,7 @@ def apply_gain_to_img(input_img, output_img, gdal_format, gain, np_dtype, in_no_
     otherargs.out_no_data = out_no_data
 
     aControls = applier.ApplierControls()
-    aControls.progress = cuiprogress.CUIProgressBar()
+    aControls.progress = progress_bar
     aControls.drivername = gdal_format
     aControls.omitPyramids = True
     aControls.calcStats = False
@@ -663,7 +687,48 @@ def apply_gain_to_img(input_img, output_img, gdal_format, gain, np_dtype, in_no_
         aControls.creationoptions = GTIFF_CREATION_OPTS
 
     applier.apply(_apply_img_gain, infiles, outfiles, otherargs, controls=aControls)
-    print("Completed")
+
+
+def calc_valid_msk(input_img, output_img, gdal_format, no_data_val):
+    """
+    A function to create a valid data mask image.
+
+    :param input_img: Input image file
+    :param output_img: Output image file
+    :param gdal_format: GDAL image format for output image
+    :param no_data_val: the input image no data value
+
+    """
+    try:
+        import tqdm
+        progress_bar = TQDMProgressBar()
+    except:
+        progress_bar = cuiprogress.GDALProgressBar()
+
+    def _calc_valid_msk(info, inputs, outputs, otherargs):
+        # Internal Function...
+        input_shp = inputs.image.shape
+        outputs.output_img = numpy.ones((1, input_shp[1], input_shp[2]), dtype=numpy.uint8)
+        for n in range(input_shp[0]):
+            outputs.output_img[0] = numpy.where(inputs.image[n] != otherargs.no_data_val, 0, outputs.output_img[0])
+
+    infiles = applier.FilenameAssociations()
+    infiles.image = input_img
+
+    outfiles = applier.FilenameAssociations()
+    outfiles.outimage = output_img
+
+    otherargs = applier.OtherInputs()
+    otherargs.no_data_val = no_data_val
+
+    aControls = applier.ApplierControls()
+    aControls.progress = progress_bar
+    aControls.drivername = gdal_format
+    aControls.omitPyramids = True
+    aControls.calcStats = False
+    if gdal_format == 'GTIFF':
+        aControls.creationoptions = GTIFF_CREATION_OPTS
+    applier.apply(_calc_valid_msk, infiles, outfiles, otherargs, controls=aControls)
 
 
 def gdal_translate(input_img, output_img, gdal_format='GTIFF'):
@@ -675,10 +740,17 @@ def gdal_translate(input_img, output_img, gdal_format='GTIFF'):
     :param output_img: The output image file.
     :param gdal_format: The output image file format
     """
+    try:
+        import tqdm
+        pbar = tqdm.tqdm(total=100)
+        callback = lambda *args, **kw: pbar.update()
+    except:
+        callback = gdal.TermProgress
+
     options = ""
     if gdal_format == 'GTIFF':
         options = "-co TILED=YES -co INTERLEAVE=PIXEL -co BLOCKXSIZE=256 -co BLOCKYSIZE=256 -co COMPRESS=LZW -co BIGTIFF=YES -co COPY_SRC_OVERVIEWS=YES"
-    trans_opt = gdal.TranslateOptions(format=gdal_format, options=options)
+    trans_opt = gdal.TranslateOptions(format=gdal_format, options=options, callback=callback)
     gdal.Translate(output_img, input_img, options=trans_opt)
 
 
@@ -691,8 +763,15 @@ def gdal_stack_images_vrt(input_imgs, output_vrt_file):
     :param output_vrt_file: The output file location for the VRT.
 
     """
+    try:
+        import tqdm
+        pbar = tqdm.tqdm(total=100)
+        callback = lambda *args, **kw: pbar.update()
+    except:
+        callback = gdal.TermProgress
+
     build_vrt_opt = gdal.BuildVRTOptions(separate=True)
-    gdal.BuildVRT(output_vrt_file, input_imgs, options=build_vrt_opt)
+    gdal.BuildVRT(output_vrt_file, input_imgs, options=build_vrt_opt, callback=callback)
 
 def write_list_to_file(data_lst, out_file):
     """
