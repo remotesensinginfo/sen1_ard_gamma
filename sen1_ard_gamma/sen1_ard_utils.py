@@ -116,7 +116,7 @@ def preappend_cmd(cmd):
 
     out_cmd = cmd
     pap_path = os.getenv('S1ARD_PAP_PATH', None)
-    if pap_cmd is not None:
+    if pap_path is not None:
         logger.debug("S1ARD_PAP_PATH is defined: '{}'.".format(pap_path))
         pap_paths = pap_path.split(':')
         lcl_path = pap_paths[0]
@@ -708,15 +708,15 @@ def calc_valid_msk(input_img, output_img, gdal_format, no_data_val):
     def _calc_valid_msk(info, inputs, outputs, otherargs):
         # Internal Function...
         input_shp = inputs.image.shape
-        outputs.output_img = numpy.ones((1, input_shp[1], input_shp[2]), dtype=numpy.uint8)
+        outputs.output_img = numpy.zeros((1, input_shp[1], input_shp[2]), dtype=numpy.uint8)
         for n in range(input_shp[0]):
-            outputs.output_img[0] = numpy.where(inputs.image[n] != otherargs.no_data_val, 0, outputs.output_img[0])
+            outputs.output_img[0] = numpy.where(inputs.image[n] != otherargs.no_data_val, 1, outputs.output_img[0])
 
     infiles = applier.FilenameAssociations()
     infiles.image = input_img
 
     outfiles = applier.FilenameAssociations()
-    outfiles.outimage = output_img
+    outfiles.output_img = output_img
 
     otherargs = applier.OtherInputs()
     otherargs.no_data_val = no_data_val
