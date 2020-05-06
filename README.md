@@ -4,7 +4,7 @@ This is a python module and terminal commands for processing Sentinel-1 GRD data
 
 Installation:
 
-python ./setup.py install
+    python ./setup.py install
 
 If you have Gamma installed locally this module can be run with the following command:
 
