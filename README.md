@@ -2,6 +2,10 @@
 
 This is a python module and terminal commands for processing Sentinel-1 GRD data products using the Gamma software. 
 
+Installation:
+
+python ./setup.py install
+
 If you have Gamma installed locally this module can be run with the following command:
 
     sen1_grd_ard.py -i ./S1A_IW_GRDH_1SDV_20191124T063118_20191124T063143_030049_036E66_30F8.SAFE/ -o ./output/ -t ./tmp/ -d DTM_UK.kea -r 20 -f GTIFF --intimgs
