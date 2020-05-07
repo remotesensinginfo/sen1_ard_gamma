@@ -40,33 +40,39 @@ import json
 
 SEN1_ARD_GAMMA_VERSION_MAJOR = 0
 SEN1_ARD_GAMMA_VERSION_MINOR = 3
-SEN1_ARD_GAMMA_VERSION_PATCH = 1
+SEN1_ARD_GAMMA_VERSION_PATCH = 2
 
 SEN1_ARD_GAMMA_VERSION = str(SEN1_ARD_GAMMA_VERSION_MAJOR) + "."  + str(SEN1_ARD_GAMMA_VERSION_MINOR) + "." + str(SEN1_ARD_GAMMA_VERSION_PATCH)
 SEN1_ARD_GAMMA_VERSION_OBJ = LooseVersion(SEN1_ARD_GAMMA_VERSION)
 
 SEN1_ARD_GAMMA_COPYRIGHT_YEAR = "2019"
 SEN1_ARD_GAMMA_COPYRIGHT_NAMES = "Pete Bunting"
-
 SEN1_ARD_GAMMA_SUPPORT_EMAIL = "pfb@aber.ac.uk"
 
 SEN1_POLS = ['VV', 'VH']
 GTIFF_CREATION_OPTS = ["TILED=YES", "COMPRESS=LZW", "BIGTIFF=YES"]
 
+eodd_log_level = os.getenv('EDD_LOG_LVL', 'INFO')
+
 log_default_level=logging.INFO
+if eodd_log_level.upper() == 'INFO':
+    log_default_level = logging.INFO
+elif eodd_log_level.upper() == 'DEBUG':
+    log_default_level = logging.DEBUG
+elif eodd_log_level.upper() == 'WARNING':
+    log_default_level = logging.WARNING
+elif eodd_log_level.upper() == 'ERROR':
+    log_default_level = logging.ERROR
+elif eodd_log_level.upper() == 'CRITICAL':
+    log_default_level = logging.CRITICAL
+else:
+    raise Exception("Logging level specified ('{}') is not recognised.".format(eodd_log_level))
 
-# Get install prefix
-install_prefix = __file__[:__file__.find('lib')]
-
-log_config_path = os.path.join(install_prefix, "share","sen1_ard_gamma", "loggingconfig.json")
-
-log_config_value = os.getenv('S1ARD_LOG_CFG', None)
-if log_config_value:
-    log_config_path = log_config_value
-if os.path.exists(log_config_path):
+log_config_path = os.getenv('S1ARD_LOG_CFG', None)
+if (log_config_path is not None) and os.path.exists(log_config_path):
     with open(log_config_path, 'rt') as f:
         config = json.load(f)
     logging.config.dictConfig(config)
 else:
-    print('Warning: did not find a logging configuration file.')
-    logging.basicConfig(level=log_default_level)
+    logging.basicConfig(level=log_default_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
