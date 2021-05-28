@@ -471,17 +471,16 @@ def find_sen1_ard_files(input_safe_file):
     """
     safe_files = dict()
 
-    safe_files['measure_vv'] = findFile(os.path.join(input_safe_file, 'measurement'), '*vv*.tiff', raise_exp=False)
-    safe_files['measure_vh'] = findFile(os.path.join(input_safe_file, 'measurement'), '*vh*.tiff', raise_exp=False)
-
-    safe_files['annotation_vv'] = findFile(os.path.join(input_safe_file, 'annotation'), '*vv*.xml', raise_exp=False)
-    safe_files['annotation_vh'] = findFile(os.path.join(input_safe_file, 'annotation'), '*vh*.xml', raise_exp=False)
-
-    safe_files['calibration_vv'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'calibration*vv*.xml', raise_exp=False)
-    safe_files['calibration_vh'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'calibration*vh*.xml', raise_exp=False)
-
-    safe_files['noise_vv'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'noise*vv*.xml', raise_exp=False)
-    safe_files['noise_vh'] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'), 'noise*vh*.xml', raise_exp=False)
+    polarisations = ['hh', 'hv', 'vv', 'vh']
+    for pol in polarisations:
+        safe_files['measure_{}'.format(pol)] = findFile(os.path.join(input_safe_file, 'measurement'),
+                                                        '*{}*.tiff'.format(pol), raise_exp=False)
+        safe_files['annotation_{}'.format(pol)] = findFile(os.path.join(input_safe_file, 'annotation'),
+                                                           '*{}*.xml'.format(pol), raise_exp=False)
+        safe_files['calibration_{}'.format(pol)] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'),
+                                                            'calibration*{}*.xml'.format(pol), raise_exp=False)
+        safe_files['noise_{}'.format(pol)] = findFile(os.path.join(input_safe_file, 'annotation', 'calibration'),
+                                                      'noise*{}*.xml'.format(pol), raise_exp=False)
 
     return safe_files
 

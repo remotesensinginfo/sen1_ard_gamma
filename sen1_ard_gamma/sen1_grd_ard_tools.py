@@ -658,7 +658,7 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
             # ------------ Processed pix Product ------------- #
 
             # ------------ Process pwr Product ------------- #
-            out_ratio_tmp_file = os.path.join(tmp_dir, "{}_pwr_ratio_tmp.tif".format(out_base_name))
+            out_ratio_tmp_file = os.path.join(tmp_dir, "{}_pwr_ratio_tmp{}".format(out_base_name, img_ext))
             sen1_ard_gamma.sen1_ard_utils.calc_ratio_img(out_scns_dict['vv']['pwr'], out_scns_dict['vh']['pwr'],
                                                          out_ratio_tmp_file, gdal_format)
 
@@ -679,6 +679,63 @@ def create_pol_stacked_products(out_scns_dict, out_base_name, tmp_dir, out_dir, 
                 sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_vrt_tmp, out_img, gdal_format)
                 dB_pwr_img = out_img
             sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['vv', 'vh', 'vv/vh'])
+            out_img_list['pwr'] = out_img
+            # ------------ Processed pwr Product ------------- #
+        elif ('hh' in scn_keys) and ('hv' in scn_keys):
+            # ------------ Process inc Product ------------- #
+            out_img = os.path.join(out_dir, "{}_inc{}".format(out_base_name, img_ext))
+            if out_int_imgs:
+                # Multiply by Gain.
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_scns_dict['hh']['inc'], out_img, gdal_format,
+                                                                10000, numpy.uint16, 0, 0)
+            else:
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_scns_dict['hh']['inc'],  out_img, gdal_format)
+            sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['inc'])
+            out_img_list['inc'] = out_img
+            # ------------ Processed inc Product ------------- #
+
+            # ------------ Process pix Product ------------- #
+            # Create tmp VRT stacked image
+            out_vrt_tmp = os.path.join(tmp_dir, "{}_pix_tmp.vrt".format(out_base_name))
+            pix_imgs = [out_scns_dict['hh']['pix'], out_scns_dict['hv']['pix']]
+            sen1_ard_gamma.sen1_ard_utils.gdal_stack_images_vrt(pix_imgs, out_vrt_tmp)
+
+            # Generate final output image
+            out_img = os.path.join(out_dir, "{}_pix{}".format(out_base_name, img_ext))
+            if out_int_imgs:
+                # Multiply by Gain.
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_vrt_tmp, out_img, gdal_format,
+                                                                10000, numpy.uint16, 0, 0)
+            else:
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_vrt_tmp, out_img, gdal_format)
+            sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['hh', 'hv'])
+            out_img_list['pix'] = out_img
+            # ------------ Processed pix Product ------------- #
+
+            # ------------ Process pwr Product ------------- #
+            out_ratio_tmp_file = os.path.join(tmp_dir, "{}_pwr_ratio_tmp{}".format(out_base_name, img_ext))
+            sen1_ard_gamma.sen1_ard_utils.calc_ratio_img(out_scns_dict['hh']['pwr'], out_scns_dict['hv']['pwr'],
+                                                         out_ratio_tmp_file, gdal_format)
+
+            # Create tmp VRT stacked power image.
+            out_vrt_tmp = os.path.join(tmp_dir, "{}_pwr_tmp.vrt".format(out_base_name))
+            pwr_imgs = [out_scns_dict['hh']['pwr'], out_scns_dict['hv']['pwr'], out_ratio_tmp_file]
+            sen1_ard_gamma.sen1_ard_utils.gdal_stack_images_vrt(pwr_imgs, out_vrt_tmp)
+
+            # Generate final output image
+            out_img = os.path.join(out_dir, "{}_pwr{}".format(out_base_name, img_ext))
+            if out_int_imgs:
+                # Multiply by Gain
+                sen1_ard_gamma.sen1_ard_utils.apply_gain_to_img(out_vrt_tmp, out_img, gdal_format,
+                                                                100000, numpy.uint32, 0, 0)
+                dB_pwr_img = out_vrt_tmp
+            else:
+                # GDAL Translate to output file
+                sen1_ard_gamma.sen1_ard_utils.gdal_translate(out_vrt_tmp, out_img, gdal_format)
+                dB_pwr_img = out_img
+            sen1_ard_gamma.sen1_ard_utils.set_band_names(out_img, ['hh', 'hv', 'hh/hv'])
             out_img_list['pwr'] = out_img
             # ------------ Processed pwr Product ------------- #
         else:
