@@ -808,7 +808,7 @@ def run_sen1_grd_ard_analysis(input_safe_file, output_dir, tmp_dir, dem_img_file
     else:
         for pol in polarisations:
             if pol not in scn_metadata_info['product_polarisations']:
-                raise Exception("Polarisation {} is not within the scene provided.")
+                raise Exception("Polarisation {} is not within the scene provided.".format(pol))
 
     c_uid = sen1_ard_gamma.sen1_ard_utils.uidGenerator()
     c_tmp_dir = os.path.join(tmp_dir, '{}_tmp_{}'.format(scn_basename, c_uid))
